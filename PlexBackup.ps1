@@ -1714,7 +1714,7 @@ Write-Host " " (GetTimestamp)
 $EndTime = Get-Date
 
 Write-Host "Script ran for (hr:min:sec.msec):"
-Write-Host " " (New-TimeSpan –Start $StartTime –End $EndTime).ToString("hh\:mm\:ss\.fff")
+Write-Host " " (New-TimeSpan â€“Start $StartTime â€“End $EndTime).ToString("hh\:mm\:ss\.fff")
 
 Write-Host "Script returned:"
 if ($Success)
