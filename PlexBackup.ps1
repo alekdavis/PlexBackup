@@ -132,7 +132,7 @@ None.
 
 .EXAMPLE
 PlexBackup.ps1
-Backs up Plex application data to the default backup location.
+Backs up compressed Plex application data to the default backup location.
 
 .EXAMPLE
 PlexBackup.ps1 -Robocopy
@@ -146,7 +146,7 @@ network share.
 
 .EXAMPLE
 PlexBackup.ps1 -Mode Continue
-Continues the last backup process wher it left off.
+Continues the last backup process where it left off.
 
 .EXAMPLE
 PlexBackup.ps1 -Mode Restore
