@@ -29,7 +29,9 @@ Alternatively, PlexBackup can create a mirror of the Plex application data folde
 To make sure the PlexBackup saves and restores the right registry key, make sure you run it under the same account as Plex Media Server runs. The registry key will be backed up every time the backup job runs. If the backup folder does not contain the backup registry key file, the Plex registry key will not be restored.
 
 ### Script execution
-You must run PlexBackup _as administrator_. And if you haven't done this already, you may need to adjust the PowerShell script execution policy to allow scripts to run. To check the current execution policy, run the following command from the PowerShell prompt:
+You must launch PlexBackup _as administrator_ when logged in under the same account your Plex Media Server instant runs.
+
+If you haven't done this already, you may need to adjust the PowerShell script execution policy to allow scripts to run. To check the current execution policy, run the following command from the PowerShell prompt:
 
 ```PowerShell
 Get-ExecutionPolicy
