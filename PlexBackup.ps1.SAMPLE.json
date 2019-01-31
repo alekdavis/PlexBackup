@@ -10,7 +10,7 @@
     "PlexServiceNameMatchString": "^Plex",
     "PlexServerExeFileName": "Plex Media Server.exe",
     "PlexServerExePath": null,
-    "RetainBackups": null,
+    "Keep": null,
     "Robocopy": true,
     "Retries": null,
     "RetryWaitSec": null,
