@@ -16,20 +16,24 @@ PlexBackup can run in three modes (specified by the `Mode` switch):
 - _Continue_: resumes an incomplete backup job.
 - _Restore_: restores Plex application data from a backup.
 
-In all case, before performing the backup or restore operation, PlexBackup will stop the Plex Windows services and the Plex Media Server process (after the script completes the operation, it will restart them).
+In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. Aafter the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process.
 
 ### Types of backup
 The script can perform two types of backup. 
 
+#### Compressed backup
 By default, it will compress every essential folder under the root of the Plex application data folder (_Plex Media Server_) and save the compressed data as separate ZIP files. For better efficiency (in case the backup folder is remote, such as on a NAS share), it first compresses the data in a temporary local file and then copies the compressed file to the backup folder (you can compress the data and save the ZIP files directly to the backup folder by setting the value of the `TempZipFileDir` parameter to null or empty string). There is a problem with PowerShell's compression routine that fails to process files and folders with paths that are longer than 260 characters. If you get this error, use the `SpecialPlexAppDataSubDirs` parameter (in code or config file) to specify the folders that are too long (or parents of the subfolders or files that are too long) and PlexBackup will copy them as-is without using compression (by default, the following application data folder is not compressed: `Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated`).
 
-Alternatively, PlexBackup can create a mirror of the Plex application data folder (minus the non-essential folders) using the Robocopy command. You may want to play with either option to see which one works better for you.
+#### Mirror backup
+Alternatively, PlexBackup can create a mirror of the Plex application data folder (minus the non-essential folders) using the Robocopy command. 
+
+You may want to play with either option to see which one works better for you.
 
 ### Plex Windows Registry key
-To make sure the PlexBackup saves and restores the right registry key, make sure you run it under the same account as Plex Media Server runs. The registry key will be backed up every time the backup job runs. If the backup folder does not contain the backup registry key file, the Plex registry key will not be restored.
+To make sure PlexBackup saves and restores the right registry key, run it under the same account as Plex Media Server runs. The registry key will be backed up every time a backup job runs. If the backup folder does not contain the backup registry key file, the Plex registry key will not be imported on a restore.
 
 ### Script execution
-You must launch PlexBackup _as administrator_ when logged in under the same account your Plex Media Server instant runs.
+You must launch PlexBackup _as administrator_ while being logged in under the same account your Plex Media Server runs.
 
 If you haven't done this already, you may need to adjust the PowerShell script execution policy to allow scripts to run. To check the current execution policy, run the following command from the PowerShell prompt:
 
@@ -81,7 +85,7 @@ Keep in mind that only settings listed in the sample above can be specified in t
 The default config file must be named after the PlexBackup script with the `.json` extension, such as `PlexBackup.ps1.json`. If the file with this name does not exist in the backup script's folder, PlexBackup will not care. You can also specify a custom script name (or more accurately, path) via the `ConfigFile` command-line argument.
 
 ### Logging
-Use the `Log` switch to log operation progress in a log file. By default, the log file will be created in the backup folder. The default log file name reflects the name of the script with the `.log` extension, such as `PlexBackup.ps1.log`. You can specify a custom log file path via the `LogFile` argument. By default, PlexBackup deletes an old log file (if one already exists), but if you specify the `LogAppend` switch, it will append log messages to the existing log file.
+Use the `Log` switch to write operation progress and informational messages to a log file. By default, the log file will be created in the backup folder. The default log file name reflects the name of the script with the `.log` extension, such as `PlexBackup.ps1.log`. You can specify a custom log file path via the `LogFile` argument. By default, PlexBackup deletes an old log file (if one already exists), but if you specify the `LogAppend` switch, it will append log messages to the existing log file.
 
 ### Bakup snapshots
 Every time you run a new backup job, the script will create a backup snapshot folder. The name of the folder will reflect the timestamp of when the script started. Use the `RetainBackups` switch to specify how many backup snapshots you want to keep: _0_ (keep all previously created backups), _1_ (keep the current backup snapshot only), _2_ (keep the current backup snapshot and one before it), _3_ (keep the current backup snapshot and two most recent snapshots), and so on. The default value is _3_.
@@ -149,7 +153,7 @@ Specifies the wait time between retries in seconds that corresponds to the Roboc
 
 _-Log, -L_
 
-Use to write informational messages to a log file (in addition to the PowerShell console). The default log file will be created in the backup folder and will be named after this script with the `.log` extension, such as `PlexBackup.ps1.log`. You can specify a custom log file via the _LogFile_ parameters.
+Set this switch to write informational messages to a log file (in addition to the PowerShell console). The default log file will be created in the backup folder and will be named after this script with the `.log` extension, such as `PlexBackup.ps1.log`. You can specify a custom log file via the _LogFile_ parameters.
 
 _-LogFile_
 
