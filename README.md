@@ -2,10 +2,10 @@
 This PowerShell script can back up and restore Plex application data files on a Windows system.
 
 ## Introduction
-Plex does not offer a meaningful backup feature. Yes, it can back up a Plex database, but if you need to move your Plex instance to a different system or restore it after a hard drive crash, a single database backup file will be of little use. For a meaningful backup, in addition to the Plex database, you will need a copy of the Plex Windows registry key and tens (or hundreds) of thousands of Plex application data files. Keep in mind that backing up gigabytes of data files may take a long time, especially when they are copied remotely, such as to a NAS share. And you must keep the Plex Media Server stopped while the backup job is running (otherwise, it can corrupt the data). In the other words, a meaningful Plex backup is a challenge to which I could not find a good solution, so I decided to build my own. Ladies and gentlement, meet PlexBackup.ps1.
+Plex does not offer a meaningful backup feature. Yes, it can back up a Plex database, but if you need to move your Plex instance to a different system or restore it after a hard drive crash, a single database backup file will be of little use. For a meaningful backup, in addition to the Plex database, you will need a copy of the Plex Windows registry key and tens (or hundreds) of thousands of Plex application data files. Keep in mind that backing up gigabytes of data files may take a long time, especially when they are copied remotely, such as to a NAS share. And you must keep the Plex Media Server stopped while the backup job is running (otherwise, it can corrupt the data). In the other words, a meaningful Plex backup is a challenge to which I could not find a good solution, so I decided to build my own. Ladies and gentlemen, meet PlexBackup.ps1.
 
 ## Overview
-PlexBackup.ps1 (or, briefly, _PlexBackup_) is a PowerShell script that can back up and restore a Plex instance on a Windows system. The script backs up the Plex database, Windows registy key, and app data folders essential for the Plex operations (it ignores the non-essential files, such as logs or crash reports). And it makes sure that Plex is not running when the backup job is active (which may take hours).
+PlexBackup.ps1 (or, briefly, _PlexBackup_) is a PowerShell script that can back up and restore a Plex instance on a Windows system. The script backs up the Plex database, Windows registry key, and app data folders essential for the Plex operations (it ignores the non-essential files, such as logs or crash reports). And it makes sure that Plex is not running when the backup job is active (which may take hours).
 
 The script will not back up media (video, audio, images) or Plex program files. You must use different backup techniques for those. For example, you can keep your media files on a RAID 5 disk array. And don't really need to back up Plex program files, since you can always download them. But for everything else, PlexBackup is your guy.
 
@@ -25,6 +25,9 @@ By default, it will compress every essential folder under the root of the Plex a
 
 Alternatively, PlexBackup can create a mirror of the Plex application data folder (minus the non-essential folders) using the Robocopy command. You may want to play with either option to see which one works better for you.
 
+### Plex Windows Registry key
+To make sure the PlexBackup saves and restores the right registry key, make sure you run it under the same account as Plex Media Server runs. The registry key will be backed up every time the backup job runs. If the backup folder does not contain the backup registry key file, the Plex registry key will not be restored.
+
 ### Script execution
 You must run PlexBackup _as administrator_. And if you haven't done this already, you may need to adjust the PowerShell script execution policy to allow scripts to run. To check the current execution policy, run the following command from the PowerShell prompt:
 
@@ -43,7 +46,7 @@ Set-ExecutionPolicy RemoteSigned
 This will allow running unsigned scripts that you write on your local computer and signed scripts downloaded from the Internet (okay, this is not a signed script, but if you copy it locally, it should work). For additional information, see [Running Scripts](https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)) at Microsoft TechNet Library.
 
 ### Runtime parameters
-The default valuew of the PlexBackup script's run-time parameters are defined in code, but you can override some of them via command-line arguments or a config file settings.
+The default value of the PlexBackup script's run-time parameters are defined in code, but you can override some of them via command-line arguments or a config file settings.
 
 ### Config file
 The config file is optional. It must use JSON formatting, such as:
@@ -141,11 +144,11 @@ Set this switch to appended log entries to the existing log file if one already 
 
 _-Quiet, -Q_
 
-Set this switch to supress all log entries sent to the PowerShell console.
+Set this switch to suppress all log entries sent to the PowerShell console.
 
 _-Shutdown_
 
-Set this switch to not start the Plex Media Server process at the end of the operation. This could be handy for restore operations, so you can double check that all is good befaure launching Plex Media Server.
+Set this switch to not start the Plex Media Server process at the end of the operation. This could be handy for restore operations, so you can double check that all is good before launching Plex Media Server.
 
 ## Examples
 ```PowerShell
@@ -201,4 +204,4 @@ Restores Plex application data from the specified backup folder holding compress
 ```PowerShell
 Get-Help .\PlexBackup.ps1
 ```
-View help information.
+Shows help information.
