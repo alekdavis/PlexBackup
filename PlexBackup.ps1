@@ -78,7 +78,7 @@ run the following command:
 
   Get-ExecutionPolicy
 
-If the execution policy doe snot allow running scripts, do the following:
+If the execution policy does not allow running scripts, do the following:
 
   (1) Start Windows PowerShell with the "Run as Administrator" option. 
   (2) Run the following command: 
@@ -113,6 +113,14 @@ in the backup root folder will be used).
 Temp folder used to stage the archiving job (use local drive for efficiency).
 To bypass the staging step, set this parameter to null or empty string.
 
+.PARAMETER Keep
+Number of old backups to keep: 
+# 0 - retain all previously created backups,
+# 1 - latest backup only,
+# 2 - latest and one before it,
+# 3 - latest and two before it, 
+# and so on.
+
 .PARAMETER Robocopy
 Set this switch to use Robocopy instead of file and folder compression.
 
@@ -121,7 +129,7 @@ The number of retries on failed copy operations (corresponds to the Robocopy
 /R switch).
 
 .PARAMETER RetryWaitSec
-pecifies the wait time between retries in seconds (corresponds to the Robocopy 
+Specifies the wait time between retries in seconds (corresponds to the Robocopy 
 /W switch).
 
 .PARAMETER Log
@@ -218,18 +226,22 @@ param
     $BackupDirPath = $null,
     [string]
     $TempZipFileDir = $env:TEMP,
+    [int]
+    $Keep = 3,
     [switch]
     $Robocopy = $false,
     [int]
-    $Retries = 2,
+    $Retries = 5,
     [int]
     $RetryWaitSec = 10,
+    [alias("L")]
     [switch]
     $Log = $false,
-    [switch]
-    $LogAppend = $false,
+    [int]
+    $LogAppend = 3,
     [string]
     $LogFile,
+    [alias("Q")]
     [switch]
     $Quiet = $false,
     [switch]
@@ -249,14 +261,6 @@ $PlexServerExeFileName = "Plex Media Server.exe"
 
 # If Plex Media Server is not running, define path to the executable here.
 $PlexServerExePath = $null
-
-# Number of backups to retain: 
-# 0 - retain all previously created backups,
-# 1 - latest backup only,
-# 2 - latest and one before it,
-# 3 - latest and two before it, 
-# and so on.
-$RetainBackups = 3
 
 # DO NOT CHANGE THE FOLLOWING SETTINGS:
 
@@ -361,7 +365,7 @@ function InitConfig
     if ($config.PlexServiceNameMatchString) { $script:PlexServiceNameMatchString = $config.PlexServiceNameMatchString }
     if ($config.PlexServerExeFileName) { $script:PlexServerExeFileName = $config.PlexServerExeFileName }
     if ($config.PlexServerExePath) { $script:PlexServerExePath = $config.PlexServerExePath }
-    if ($config.RetainBackups) { $script:RetainBackups = $config.RetainBackups }
+    if ($config.Keep) { $script:Keep = $config.Keep }
     if ($config.Robocopy) { $script:Robocopy = $config.Robocopy }
     if ($config.Retries) { $script:Retries = $config.Retries }
     if ($config.RetryWaitSec) { $script:RetryWaitSec = $config.RetryWaitSec }
@@ -1771,7 +1775,7 @@ function CreatePlexBackup
         [string[]]
         $specialPlexAppDataSubDirs,
         [int]
-        $retainBackups,
+        $keep,
         [string]
         $regexBackupDirNameFormat,
         [string]
@@ -1840,7 +1844,7 @@ function CreatePlexBackup
     }
 
     # Delete old backup folders.
-    if ($retainBackups -gt 0)
+    if ($keep -gt 0)
     {
         # Get all folders with names from newest to oldest.
         $oldBackupDirs = Get-ChildItem -Path $backupRootDir -Directory | 
@@ -1849,14 +1853,14 @@ function CreatePlexBackup
 
         $i = 1
 
-        if ($oldBackupDirs.Count -ge $retainBackups)
+        if ($oldBackupDirs.Count -ge $keep)
         {
             LogMessage "Deleting old backup folder(s):"
         }
 
         foreach ($oldBackupDir in $oldBackupDirs)
         {
-            if ($i -ge $retainBackups)
+            if ($i -ge $keep)
             {
                 LogMessage (Indent $oldBackupDir.Name)
 
@@ -2168,7 +2172,7 @@ else
         $TempZipFileDir `
         $ExcludePlexAppDataDirs `
         $SpecialPlexAppDataSubDirs `
-        $RetainBackups `
+        $Keep `
         $RegexBackupDirNameFormat `
         $BackupDirNameFormat `
         $SubDirFiles `
