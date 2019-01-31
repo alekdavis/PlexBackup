@@ -168,56 +168,68 @@ _-Shutdown_
 Set this switch to not start the Plex Media Server process at the end of the operation. This could be handy for restore operations, so you can double check that all is good before launching Plex Media Server.
 
 ## Examples
+
+### Example
 ```PowerShell
 PlexBackup.ps1
 ```
 Backs up Plex application data to the default backup location using file and folder compression.
 
+### Example
 ```PowerShell
 PlexBackup.ps1 -ConfigFile "C:\Scripts\PlexBackup.ps1.ROBOCOPY.json
 ```
 Runs the script with the non-default settings specified in the custom config file.
 
+### Example
 ```PowerShell
 PlexBackup.ps1 -Log -Keep 5
 ```
 Backs up Plex application data to the default backup location using file and folder compression. Writes progress to the default log file. Keeps current and four previous backup snapshots (total of five).
 
+### Example
 ```PowerShell
 PlexBackup.ps1 -Robocopy
 ```
 Creates a mirror copy of the Plex application data (minus the non-essential folders) in the default backup location using the Robocopy command.
 
+### Example
 ```PowerShell
 PlexBackup.ps1 -BackupRootDir "\\MYNAS\Backup\Plex"
 ```
 Backs up Plex application data to the specified backup location on a network share using file and folder compression.
 
+### Example
 ```PowerShell
 PlexBackup.ps1 -Mode "Continue"
 ```
 Continues the last backup process (using file and folder compression) where it left off.
 
+### Example
 ```PowerShell
 PlexBackup.ps1 -Mode "Continue" -Robocopy
 ```
 Reruns the last backup process using a mirror copy.
 
+### Example
 ```PowerShell
 PlexBackup.ps1 -Mode Restore
 ```
 Restores Plex application data from the latest backup from the default folder holding compressed data.
 
+### Example
 ```PowerShell
 PlexBackup.ps1 -Mode Restore -Robocopy
 ```
 Restores Plex application data from the latest backup in the default folder holding a mirror copy of the Plex application data folder.
 
+### Example
 ```PowerShell
 PlexBackup.ps1 -Mode Restore -BackupDirPath "\\MYNAS\PlexBackup\20190101183015"
 ```
 Restores Plex application data from the specified backup folder holding compressed data on a remote share.
 
+### Example
 ```PowerShell
 Get-Help .\PlexBackup.ps1
 ```
