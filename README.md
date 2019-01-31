@@ -194,12 +194,12 @@ PlexBackup.ps1 -BackupRootDir "\\MYNAS\Backup\Plex"
 Backs up Plex application data to the specified backup location on a network share using file and folder compression.
 
 ```PowerShell
-PlexBackup.ps1 -Mode Continue
+PlexBackup.ps1 -Mode "Continue"
 ```
 Continues the last backup process (using file and folder compression) where it left off.
 
 ```PowerShell
-PlexBackup.ps1 -Mode Continue -Robocopy
+PlexBackup.ps1 -Mode "Continue" -Robocopy
 ```
 Reruns the last backup process using a mirror copy.
 
