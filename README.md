@@ -38,8 +38,8 @@ Get-ExecutionPolicy
 ```
 If the execution policy does not allow running scripts, do the following:
 
-(1) Start Windows PowerShell with the "Run as Administrator" option. 
-(2) Run the following command: 
+- Start Windows PowerShell with the "Run as Administrator" option. 
+- Run the following command: 
 
 ```PowerShell
 Set-ExecutionPolicy RemoteSigned
