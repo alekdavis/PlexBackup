@@ -88,7 +88,22 @@ Every time you run a new backup job, the script will create a backup snapshot fo
 
 ## Syntax
 ```PowerShell
-.\PlexBackup.ps1 [[-Mode] <String>] [[-ConfigFile] <String>] [[-PlexAppDataDir] <String>] [[-BackupRootDir] <String>] [[-BackupDirPath] <String>] [[-TempZipFileDir] <String>] [[-Keep <Int32>] [-Robocopy] [[-Retries] <Int32>] [[-RetryWaitSec] <Int32>] [-Log|-L] [-LogAppend] [[-LogFile] <String>] [-Quiet|-Q] [-Shutdown] [<CommonParameters>]
+.\PlexBackup.ps1 `
+    [[-Mode] <String>] `
+    [[-ConfigFile] <String>] `
+    [[-PlexAppDataDir] <String>] `
+    [[-BackupRootDir] <String>] `
+    [[-BackupDirPath] <String>] `
+    [[-TempZipFileDir] <String>] `
+    [[-Keep <Int32>] [-Robocopy] `
+    [[-Retries] <Int32>] `
+    [[-RetryWaitSec] <Int32>] `
+    [-Log|-L] `
+    [-LogAppend] `
+    [[-LogFile] <String>] `
+    [-Quiet|-Q] `
+    [-Shutdown] `
+    [<CommonParameters>]
 ```
 ### Arguments
 
