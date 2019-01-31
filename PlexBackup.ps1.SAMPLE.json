@@ -1,9 +1,9 @@
 {
     "Mode": null,
-    "BackupDirPath": null,
-    "BackupRootDir": "\\\\MYNAS\\PlexBackup",
     "PlexAppDataDir": null,
-    "TempZipFileDir": null,
+    "BackupRootDir": "\\\\MYNAS\\PlexBackup",
+    "BackupDirPath": null,
+    "TempZipFileDir": "",
     "PlexRegKey": null,
     "ExcludePlexAppDataDirs": null,
     "SpecialPlexAppDataSubDirs": null,
@@ -11,8 +11,11 @@
     "PlexServerExeFileName": "Plex Media Server.exe",
     "PlexServerExePath": null,
     "RetainBackups": null,
-    "Robocopy": null,
+    "Robocopy": true,
     "Retries": null,
     "RetryWaitSec": null,
+    "Log": true,
+    "LogAppend": null,
+    "LogFile": null,
     "Shutdown": null
 }
