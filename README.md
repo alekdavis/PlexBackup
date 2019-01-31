@@ -48,7 +48,7 @@ Set-ExecutionPolicy RemoteSigned
 This will allow running unsigned scripts that you write on your local computer and signed scripts downloaded from the Internet (okay, this is not a signed script, but if you copy it locally, it should work). For additional information, see [Running Scripts](https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)) at Microsoft TechNet Library.
 
 ### Runtime parameters
-The default value of the PlexBackup script's run-time parameters are defined in code, but you can override some of them via command-line arguments or a config file settings.
+The default value of the PlexBackup script's runtime parameters are defined in code, but you can override some of them via command-line arguments or a config file settings.
 
 ### Config file
 The config file is optional. It must use JSON formatting, such as:
