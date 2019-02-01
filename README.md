@@ -16,7 +16,7 @@ PlexBackup can run in three modes (specified by the `Mode` switch):
 - _Continue_: resumes an incomplete backup job.
 - _Restore_: restores Plex application data from a backup.
 
-In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. Aafter the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process.
+In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. After the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process.
 
 ### Types of backup
 The script can perform two types of backup. 
