@@ -55,7 +55,7 @@ This will allow running unsigned scripts that you write on your local computer a
 The default value of the PlexBackup script's runtime parameters are defined in code, but you can override some of them via command-line arguments or config file settings.
 
 ### Config file
-The config file is optional. It must use JSON formatting, such as:
+Config file is optional. It must use JSON formatting, such as:
 
 ```JavaScript
 {
