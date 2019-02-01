@@ -88,7 +88,7 @@ The default config file must be named after the PlexBackup script with the `.jso
 Use the `Log` switch to write operation progress and informational messages to a log file. By default, the log file will be created in the backup folder. The default log file name reflects the name of the script with the `.log` extension, such as `PlexBackup.ps1.log`. You can specify a custom log file path via the `LogFile` argument. By default, PlexBackup deletes an old log file (if one already exists), but if you specify the `LogAppend` switch, it will append log messages to the existing log file.
 
 ### Bakup snapshots
-Every time you run a new backup job, the script will create a backup snapshot folder. The name of the folder will reflect the timestamp of when the script started. Use the `RetainBackups` switch to specify how many backup snapshots you want to keep: _0_ (keep all previously created backups), _1_ (keep the current backup snapshot only), _2_ (keep the current backup snapshot and one before it), _3_ (keep the current backup snapshot and two most recent snapshots), and so on. The default value is _3_.
+Every time you run a new backup job, the script will create a backup snapshot folder. The name of the folder will reflect the timestamp of when the script started. Use the `Keep` switch to specify how many backup snapshots you want to keep: _0_ (keep all previously created backups), _1_ (keep the current backup snapshot only), _2_ (keep the current backup snapshot and one before it), _3_ (keep the current backup snapshot and two most recent snapshots), and so on. The default value is _3_.
 
 ## Syntax
 ```PowerShell
