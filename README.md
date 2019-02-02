@@ -1,5 +1,5 @@
 # PlexBackup.ps1
-This PowerShell script can back up and restore Plex application data files on a Windows system.
+This PowerShell script can back up and restore [Plex](https://www.plex.tv/) application data files on a Windows system.
 
 ## Introduction
 Plex does not offer a meaningful backup feature. Yes, it can back up a Plex database, but if you need to move your Plex instance to a different system or restore it after a hard drive crash, a single database backup file will be of little use. For a meaningful backup, in addition to the Plex database, you will need a copy of the Plex Windows registry key and tens (or hundreds) of thousands of Plex application data files. Keep in mind that backing up gigabytes of data files may take a long time, especially when they are copied remotely, such as to a NAS share. And you must keep the Plex Media Server stopped while the backup job is running (otherwise, it can corrupt the data). In the other words, a meaningful Plex backup is a challenge to which I could not find a good solution, so I decided to build my own. Ladies and gentlemen, meet PlexBackup.ps1.
