@@ -1,7 +1,8 @@
 {
     "_meta": {
         "version": "1.0",
-        "strictMode": false
+        "strictMode": false,
+        "description": "Sample configuration settings for PlexBackup.ps1."
     },
     "Mode": {
         "value": ""
@@ -10,7 +11,7 @@
         "value": null
     },
     "BackupRootDir": {
-        "value": "D:\\PlexBackup"
+        "value": "\\\\MYNAS\\PlexBackup"
     },
     "BackupDirPath": {
         "value": null
@@ -30,11 +31,11 @@
     },
     "PlexServiceNameMatchString": {
         "hasValue": true,
-        "value": "^Windows Push Notifications"
+        "value": "^Plex"
     },
     "PlexServerExeFileName": {
         "hasValue": true,
-        "value": "workpace.exe"
+        "value": "Plex Media Server.exe"
     },
     "PlexServerExePath": {
         "value": null
