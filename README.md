@@ -203,6 +203,10 @@ _-Shutdown_
 
 Set this switch to not start the Plex Media Server process at the end of the operation. This could be handy for restore operations, so you can double check that all is good before launching Plex Media Server.
 
+_<CommonParameters>_
+    
+Common PowerShell parameters (the script is not using these explicitly).
+
 ## Examples
 
 ### Example
