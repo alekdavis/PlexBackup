@@ -141,7 +141,7 @@ Path to the optional custom config file (default: _.\PlexBackup.ps1.json_).
 
 _-PlexAppDataDir_
 
-Location of the Plex Media Server application data folder (default: _%appdata%\..\Local\Plex Media Server).
+Location of the Plex Media Server application data folder (default: _%localappdata%\Plex Media Server).
 
 _-BackupRootDir_
 
