@@ -21,10 +21,10 @@ In all cases, before performing a backup or restore operation, PlexBackup will s
 ### Types of backup
 The script can perform two types of backup. 
 
-#### Compressed backup
-By default, it will compress every essential folder under the root of the Plex application data folder (_Plex Media Server_) and save the compressed data as separate ZIP files. For better efficiency (in case the backup folder is remote, such as on a NAS share), it first compresses the data in a temporary local file and then copies the compressed file to the backup folder (you can compress the data and save the ZIP files directly to the backup folder by setting the value of the `TempZipFileDir` parameter to null or empty string). There is a problem with PowerShell's compression routine that fails to process files and folders with paths that are longer than 260 characters. If you get this error, use the `SpecialPlexAppDataSubDirs` parameter (in code or config file) to specify the folders that are too long (or parents of the subfolders or files that are too long) and PlexBackup will copy them as-is without using compression (by default, the following application data folder is not compressed: `Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated`).
+#### Compressed
+By default, the script compresses every essential folder under the root of the Plex application data folder (_Plex Media Server_) and saves the compressed data as separate ZIP files. For better efficiency (in case the backup folder is remote, such as on a NAS share), it first compresses the data in a temporary local file and then copies the compressed file to the backup folder (you can compress the data and save the ZIP files directly to the backup folder by setting the value of the `TempZipFileDir` parameter to null or empty string). There is a problem with PowerShell's compression routine that fails to process files and folders with paths that are longer than 260 characters. If you get this error, use the `SpecialPlexAppDataSubDirs` parameter (in code or config file) to specify the folders that are too long (or parents of the subfolders or files that are too long) and PlexBackup will copy them as-is without using compression (by default, the following application data folder is not compressed: `Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated`).
 
-#### Mirror backup
+#### Robocopy
 Alternatively, PlexBackup can create a mirror of the Plex application data folder (minus the non-essential folders) using the Robocopy command. 
 
 You may want to play with either option to see which one works better for you.
@@ -55,37 +55,53 @@ This will allow running unsigned scripts that you write on your local computer a
 The default value of the PlexBackup script's runtime parameters are defined in code, but you can override some of them via command-line arguments or config file settings.
 
 ### Config file
-Config file is optional. It must use JSON formatting, such as:
+Config file is optional. The default config file must be named after the PlexBackup script with the `.json` extension, such as `PlexBackup.ps1.json`. If the file with this name does not exist in the backup script's folder, PlexBackup will not care. You can also specify a custom script name (or more accurately, path) via the `ConfigFile` command-line argument.
+
+A config file must use JSON formatting, such as:
 
 ```JavaScript
 {
-    "Mode": null,
-    "PlexAppDataDir": null,
-    "BackupRootDir": "\\\\MYNAS\\PlexBackup",
-    "BackupDirPath": null,
-    "TempZipFileDir": "",
-    "PlexRegKey": null,
-    "ExcludePlexAppDataDirs": null,
-    "SpecialPlexAppDataSubDirs": null,
-    "PlexServiceNameMatchString": "^Plex",
-    "PlexServerExeFileName": "Plex Media Server.exe",
-    "PlexServerExePath": null,
-    "RetainBackups": null,
-    "Robocopy": true,
-    "Retries": null,
-    "RetryWaitSec": null,
-    "Log": true,
-    "LogAppend": null,
-    "LogFile": null,
-    "Shutdown": null
+    "_meta": {
+        "version": "1.0",
+        "strictMode": false,
+        "description": "Sample configuration settings for PlexBackup.ps1."
+    },
+    "Mode": { "value": "" },
+    "PlexAppDataDir": { "value": null },
+    "BackupRootDir": { "value": "\\\\MYNAS\\PlexBackup" },
+    "BackupDirPath": { "value": null },
+    "TempZipFileDir": { "hasValue": true, "value": null },
+    "PlexRegKey": { "value": null },
+    "ExcludePlexAppDataDirs": { "value": null },
+    "SpecialPlexAppDataSubDirs": { "value": null },
+    "PlexServiceNameMatchString": { "value": "^Plex" },
+    "PlexServerExeFileName": { "value": "Plex Media Server.exe" },
+    "PlexServerExePath": { "value": null },
+    "RetainBackups": { "value": null },
+    "Robocopy": { "value": false },
+    "Retries": { "value": null },
+    "RetryWaitSec": { "value": null },
+    "Log": { "value": true },
+    "LogAppend": { "value": null },
+    "LogFile": { "value": null },
+    "ErrorLog": { "value": true  },
+    "ErrorLogAppend": { "value": null  },
+    "ErrorLogFile": { "value": null },
+    "Shutdown": { "value": null }
 }
 ```
-Keep in mind that only settings listed in the sample above can be specified in the config file. Also, the script will ignore the config file values set to `null`. 
+The `_meta` element describes the file and the file structure. It does not include any configuration settings. The important attributes  of the `_meta` elemant are:
 
-The default config file must be named after the PlexBackup script with the `.json` extension, such as `PlexBackup.ps1.json`. If the file with this name does not exist in the backup script's folder, PlexBackup will not care. You can also specify a custom script name (or more accurately, path) via the `ConfigFile` command-line argument.
+- _version_: can be used to handle future file schema changes, and
+- _strictMode_: when set to `true` every config setting that needs to be used must have the `hasValue` attribute set to `true`; if the _strictMode_ element is missing or if its value is set to `false`, every config setting that gats validated by the PowerShell's `if` statement will be used.
+
+Make sure you use proper JSON formatting (escape characters, etc) when defining the config values (e.g. you must escape backslash characters with another backslash).
 
 ### Logging
-Use the `Log` switch to write operation progress and informational messages to a log file. By default, the log file will be created in the backup folder. The default log file name reflects the name of the script with the `.log` extension, such as `PlexBackup.ps1.log`. You can specify a custom log file path via the `LogFile` argument. By default, PlexBackup deletes an old log file (if one already exists), but if you specify the `LogAppend` switch, it will append log messages to the existing log file.
+Use the `Log` switch to write operation progress and informational messages to a log file. By default, the log file will be created in the backup folder. The default log file name reflects the name of the script with the `.log` extension, such as `PlexBackup.ps1.log`. You can specify a custom log file path via the `LogFile` argument. By default, PlexBackup deletes an old log file (if one already exists), but if you specify the `LogAppend` switch, it will append new log messages to the existing log file.
+
+### Error log
+Use the `ErrorLog` switch to write error messages to a dedicated error log file. By default, the error log file will be created in the backup folder. The default error log file name reflects the name of the script with the `.err.log` extension, such as `PlexBackup.ps1.err.log`. You can specify a custom error log file path via the `ErrorLogFile` argument. By default, PlexBackup deletes an old error log file (if one already exists), but if you specify the `ErrorLogAppend` switch, it will append new error messages to the existing error log file. If no errors occur, the error log file will not be created.
 
 ### Bakup snapshots
 Every time you run a new backup job, the script will create a backup snapshot folder. The name of the folder will reflect the timestamp of when the script started. Use the `Keep` switch to specify how many backup snapshots you want to keep: _0_ (keep all previously created backups), _1_ (keep the current backup snapshot only), _2_ (keep the current backup snapshot and one before it), _3_ (keep the current backup snapshot and two most recent snapshots), and so on. The default value is _3_.
@@ -106,6 +122,9 @@ Every time you run a new backup job, the script will create a backup snapshot fo
     [-Log|-L] `
     [-LogAppend] `
     [[-LogFile] <String>] `
+    [-ErrorLog|-L] `
+    [-ErrorLogAppend] `
+    [[-ErrorLogFile] <String>] `
     [-Quiet|-Q] `
     [-Shutdown] `
     [<CommonParameters>]
@@ -164,6 +183,18 @@ _-LogAppend_
 
 Set this switch to appended log entries to the existing log file if one already exists (by default, the old log file will be overwritten).
 
+_-ErrorLog_
+
+Set this switch to write error messages to an error log file (in addition to the PowerShell console). The default error log file will be created in the backup folder and will be named after this script with the `.err.log` extension, such as `PlexBackup.ps1.err.log`. You can specify a custom log file via the _ErrorLogFile_ parameters.
+
+_-ErrorLogFile_
+
+Defines a custom error log file path. When this parameter is set to a non-null and non-empty value, the `-ErrorLog` switch can be omitted.
+
+_-ErrorLogAppend_
+
+Set this switch to appended error log entries to the existing error log file if one already exists (by default, the old error log file will be overwritten).
+
 _-Quiet, -Q_
 
 Set this switch to suppress all log entries sent to the PowerShell console.
@@ -188,9 +219,9 @@ Runs the script with the non-default settings specified in the custom config fil
 
 ### Example
 ```PowerShell
-PlexBackup.ps1 -Log -Keep 5
+PlexBackup.ps1 -Log -ErrorLog -Keep 5
 ```
-Backs up Plex application data to the default backup location using file and folder compression. Writes progress to the default log file. Keeps current and four previous backup snapshots (total of five).
+Backs up Plex application data to the default backup location using file and folder compression. Writes progress to the default log file. Writes error messages to the default error log file. Keeps current and four previous backup snapshots (total of five).
 
 ### Example
 ```PowerShell
