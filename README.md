@@ -122,7 +122,7 @@ Every time you run a new backup job, the script will create a backup snapshot fo
     [-Log|-L] `
     [-LogAppend] `
     [[-LogFile] <String>] `
-    [-ErrorLog|-L] `
+    [-ErrorLog] `
     [-ErrorLogAppend] `
     [[-ErrorLogFile] <String>] `
     [-Quiet|-Q] `
