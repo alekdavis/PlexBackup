@@ -25,7 +25,7 @@ The script can perform two types of backup.
 By default, the script compresses every essential folder under the root of the Plex application data folder (_Plex Media Server_) and saves the compressed data as separate ZIP files. For better efficiency (in case the backup folder is remote, such as on a NAS share), it first compresses the data in a temporary local file and then copies the compressed file to the backup folder (you can compress the data and save the ZIP files directly to the backup folder by setting the value of the `TempZipFileDir` parameter to null or empty string). There is a problem with PowerShell's compression routine that fails to process files and folders with paths that are longer than 260 characters. If you get this error, use the `SpecialPlexAppDataSubDirs` parameter (in code or config file) to specify the folders that are too long (or parents of the subfolders or files that are too long) and PlexBackup will copy them as-is without using compression (by default, the following application data folder is not compressed: `Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated`).
 
 #### Robocopy
-Alternatively, PlexBackup can create a mirror of the Plex application data folder (minus the non-essential folders) using the Robocopy command. 
+If you run PlexBackup with the `Robocopy` switch, instead of archiving, the script will create a mirror of the Plex application data folder (minus the non-essential folders) using the Robocopy command. 
 
 You may want to play with either option to see which one works better for you.
 
