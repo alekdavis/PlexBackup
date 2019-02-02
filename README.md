@@ -90,10 +90,10 @@ A config file must use JSON formatting, such as:
     "Shutdown": { "value": null }
 }
 ```
-The `_meta` element describes the file and the file structure. It does not include any configuration settings. The important attributes  of the `_meta` elemant are:
+The `_meta` element describes the file and the file structure. It does not include any configuration settings. The important attributes  of the `_meta` element are:
 
 - _version_: can be used to handle future file schema changes, and
-- _strictMode_: when set to `true` every config setting that needs to be used must have the `hasValue` attribute set to `true`; if the _strictMode_ element is missing or if its value is set to `false`, every config setting that gats validated by the PowerShell's `if` statement will be used.
+- _strictMode_: when set to `true` every config setting that needs to be used must have the `hasValue` attribute set to `true`; if the _strictMode_ element is missing or if its value is set to `false`, every config setting that gets validated by the PowerShell's `if` statement will be used.
 
 Make sure you use proper JSON formatting (escape characters, etc) when defining the config values (e.g. you must escape backslash characters with another backslash).
 
@@ -103,7 +103,7 @@ Use the `Log` switch to write operation progress and informational messages to a
 ### Error log
 Use the `ErrorLog` switch to write error messages to a dedicated error log file. By default, the error log file will be created in the backup folder. The default error log file name reflects the name of the script with the `.err.log` extension, such as `PlexBackup.ps1.err.log`. You can specify a custom error log file path via the `ErrorLogFile` argument. By default, PlexBackup deletes an old error log file (if one already exists), but if you specify the `ErrorLogAppend` switch, it will append new error messages to the existing error log file. If no errors occur, the error log file will not be created.
 
-### Bakup snapshots
+### Backup snapshots
 Every time you run a new backup job, the script will create a backup snapshot folder. The name of the folder will reflect the timestamp of when the script started. Use the `Keep` switch to specify how many backup snapshots you want to keep: _0_ (keep all previously created backups), _1_ (keep the current backup snapshot only), _2_ (keep the current backup snapshot and one before it), _3_ (keep the current backup snapshot and two most recent snapshots), and so on. The default value is _3_.
 
 ## Syntax
