@@ -1,21 +1,75 @@
 {
-    "Mode": null,
-    "PlexAppDataDir": null,
-    "BackupRootDir": "\\\\MYNAS\\PlexBackup",
-    "BackupDirPath": null,
-    "TempZipFileDir": "",
-    "PlexRegKey": null,
-    "ExcludePlexAppDataDirs": null,
-    "SpecialPlexAppDataSubDirs": null,
-    "PlexServiceNameMatchString": "^Plex",
-    "PlexServerExeFileName": "Plex Media Server.exe",
-    "PlexServerExePath": null,
-    "Keep": null,
-    "Robocopy": true,
-    "Retries": null,
-    "RetryWaitSec": null,
-    "Log": true,
-    "LogAppend": null,
-    "LogFile": null,
-    "Shutdown": null
+    "_meta": {
+        "version": "1.0",
+        "strictMode": false
+    },
+    "Mode": {
+        "value": ""
+    },
+    "PlexAppDataDir": {
+        "value": null
+    },
+    "BackupRootDir": {
+        "value": "D:\\PlexBackup"
+    },
+    "BackupDirPath": {
+        "value": null
+    },
+    "TempZipFileDir": {
+        "hasValue": true,
+        "value": null
+    },
+    "PlexRegKey": {
+        "value": null
+    },
+    "ExcludePlexAppDataDirs": {
+        "value": null
+    },
+    "SpecialPlexAppDataSubDirs": {
+        "value": null
+    },
+    "PlexServiceNameMatchString": {
+        "hasValue": true,
+        "value": "^Windows Push Notifications"
+    },
+    "PlexServerExeFileName": {
+        "hasValue": true,
+        "value": "workpace.exe"
+    },
+    "PlexServerExePath": {
+        "value": null
+    },
+    "RetainBackups": {
+        "value": null
+    },
+    "Robocopy": {
+        "value": false
+    },
+    "Retries": {
+        "value": null
+    },
+    "RetryWaitSec": {
+        "value": null
+    },
+    "Log": {
+        "value": true
+    },
+    "LogAppend": {
+        "value": null
+    },
+    "LogFile": {
+        "value": null
+    },
+    "ErrorLog": {
+        "value": true
+    },
+    "ErrorLogAppend": {
+        "value": null
+    },
+    "ErrorLogFile": {
+        "value": null
+    },
+    "Shutdown": {
+        "value": null
+    }
 }
