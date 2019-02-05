@@ -267,6 +267,50 @@ _-Shutdown_
 
 Set this switch to not start the Plex Media Server process at the end of the operation. This could be handy for restore operations, so you can double check that all is good before launching Plex Media Server.
 
+_-SendMail_
+Indicates in which case the script must send an email notification about the result of the operation: _Never_ (default),
+_Always_, _OnError_ (for any operation), _OnSuccess_ (for any operation), _OnBackup_ (for both the Backup and Continue modes on either error or success), _OnBackupError_, _OnBackupSuccess_, _OnRestore_ (on either error or success), _OnRestoreError_, and _OnRestoreSuccess_.
+
+_-From_
+
+Specifies the email address when email notification sender. If this value is not provided, the username from the credentails saved in the credentials file or enetered at the credentials prompt will be used. If the _From_ address cannot be determined, the notification will not be sent.
+
+_-To_
+
+Specifies the email address of the email recepient. If this value is not provided, the addressed defined in the _To_ parameter will be used.
+
+_-SmtpServer_
+
+Defines the SMTP server host. If not specified, the notification will not be sent.
+
+_-Port_
+
+Specifies an alternative port on the SMTP server. Default: 0 (zero, i.e. the default port 25 will be used).
+
+_-UseSsl_
+
+Tells the script to use the Secure Sockets Layer (SSL) protocol when connecting to the SMTP server. By default, SSL is not used.
+
+_-CredentialFile_
+
+Path to the file holding username and encrypted password of the account that has permission to send mail via the SMTP server.
+
+_-PromptForCredential, -Prompt_
+Tells the script to prompt user for SMTP server credentials (when they are not specified in the credential file).
+
+_-SaveCredential, -Save_
+
+Tells the script to save the SMTP server credentials in the credential file.
+
+_Anonymous_
+
+Tells the script to not use credentials when sending email notifications.
+
+.Parameter SendLogFile
+
+Indicates in which case the script must send an attachment along with th email
+notification. Values: Never (default), OnError, OnSuccess, Always.
+
 _<CommonParameters>_
     
 Common PowerShell parameters (the script is not using these explicitly).
