@@ -70,5 +70,39 @@
     },
     "Shutdown": {
         "value": null
+    },
+    "SendMail": {
+        "hasValue": true,
+        "value": false
+    },
+    "From": {
+        "value": null
+    },
+    "To": {
+        "value": null
+    },
+    "SmtpServer": {
+        "value": "smtp.gmail.com"
+    },
+    "Port": {
+        "value": 587
+    },
+    "UseSsl": {
+        "value": true
+    },
+    "CredentialFile": {
+        "value": null
+    },
+    "PromptForCredential": {
+        "value": true
+    },
+    "SaveCredential": {
+        "value": true
+    },
+    "Anonymous": {
+        "value": null
+    },
+    "SendLogFile": {
+        "value": true
     }
 }
