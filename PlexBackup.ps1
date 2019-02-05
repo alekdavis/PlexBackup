@@ -59,6 +59,8 @@ Media Server process via the -Shutdown switch.
 To override the default script settings, modify the values of script parameters
 and global variables inline or specify them in a config file.
 
+The script can send an email notification on the operation completion.
+
 The config file must use the JSON format. Not every script variable can be
 specified in the config file (for the list of overridable variables, see the
 InitConfig function or a sample config file). Only non-null values from config
@@ -115,11 +117,11 @@ To bypass the staging step, set this parameter to null or empty string.
 
 .PARAMETER Keep
 Number of old backups to keep:
-# 0 - retain all previously created backups,
-# 1 - latest backup only,
-# 2 - latest and one before it,
-# 3 - latest and two before it,
-# and so on.
+  0 - retain all previously created backups,
+  1 - latest backup only,
+  2 - latest and one before it,
+  3 - latest and two before it,
+and so on.
 
 .PARAMETER Robocopy
 Set this switch to use Robocopy instead of file and folder compression.
@@ -166,10 +168,73 @@ Set this switch to not start the Plex Media Server process at the end of the
 operation (could be handy for restores, so you can double check that all is
 good befaure launching Plex media Server).
 
+.PARAMETER SendMail
+Indicates in which case the script must send an email notification about
+the result of the operation. Values (with explanations): Never (default),
+Always, OnError (for any operation), OnSuccess (for any operation), OnBackup
+(for both the Backup and Continue modes on either error or success),
+OnBackupError, OnBackupSuccess, OnRestore (on either error or success),
+OnRestoreError, and OnRestoreSuccess.
+
+.PARAMETER From
+Specifies the From address when email notification gets sent. If this value
+is not provided, the username from the credentails saved in the credentials
+file or enetered at the credentials prompt will be used. Ifd the From address
+cannot be determined, the notification will not be sent.
+
+.PARAMETER To
+Specifies the To address when email notification gets sent. If this value is
+not provided, the addressed defined in the To parameter will be used.
+
+.PARAMETER SmtpServer
+Defines the SMTP server host. If not specified, the notification will not
+be sent.
+
+.PARAMETER Port
+Specifies an alternative port on the SMTP server. Default: 0 (zero, i.e.
+default port 25 will be used).
+
+.PARAMETER UseSsl
+Tells the script to use the Secure Sockets Layer (SSL) protocol to establish
+a connection to the remote computer to send mail. By default, SSL is not used.
+
+.PARAMETER CredentialFile
+Path to the file holding username and encrypted password of the account that
+has permission to send mail via the SMTP server. You can generate the file
+via the following PowerShell command:
+
+  Get-Credential | Export-CliXml -Path "PathToFile.xml"
+
+The default log file will be created in the backup folder and will be named
+after this script with the '.xml' extension, such as 'PlexBackup.ps1.xml'.
+You can also save the credentials in the file by running the script with the
+PromptForCredential and SaveCredential switches turned on. If the credentials
+are not specified, the send mail operation will be invoked on behalf of the
+current (or anonymous) user. Please be aware that you may some public SMTP
+servers, such as Gmail or Yahoo, have special requirements, i.e. you may need
+to set up an application password (when using two-factor authentication -- 2FA
+-- with Gmail) or modify your account settings to allow less secure applications
+to connect to the SMTP server (when not using 2FA). Please check the
+requirements with your SMTP provider.
+
+.PARAMETER PromptForCredential
+Tells the script to prompt user for SMTP server credentials, if they are
+not specified in the credential file.
+
+.PARAMETER SaveCredential
+Tells the script to save the SMTP server credentials in the credential file.
+
+.Parameter Anonymous
+Tells the script to not use credentials when sending email notification.
+
+.Parameter SendLogFile
+Indicates in which case the script must send an attachment along with th email
+notification. Values: Never (default), OnError, OnSuccess, Always.
+
 .NOTES
-Version    : 1.2.0
+Version    : 1.3.0
 Author     : Alek Davis
-Created on : 2019-02-01
+Created on : 2019-02-05
 
 .LINK
 https://github.com/alekdavis/PlexBackup
@@ -212,6 +277,17 @@ PlexBackup.ps1 -Mode Restore -BackupDirPath "\\MYNAS\PlexBackup\20190101183015"
 Restores Plex application data from a backup in the specified remote folder.
 
 .EXAMPLE
+PlexBackup.ps1 -SendMail Always -UseSsl -Prompt -Save -SendLogFile OnError -SmtpServer smtp.gmail.com -Port 587
+Runs a backup job and sends an email notification over an SSL channel.
+If the backup operation fails, the log file will be attached to the email
+message. The sender's and the recipient's email addresses will determined
+from the username of the credential object. The credential object will be
+set either from the credential file or, if the file does not exist, via
+a user prompt (in the latter case, the credential object will be saved in
+the credential file with password encrypted using a user- and computer-
+specific key).
+
+.EXAMPLE
 Get-Help .\PlexBackup.ps1
 View help information.
 #>
@@ -236,7 +312,7 @@ param
     [string]
     $BackupRootDir = "C:\PlexBackup",
     [string]
-    [alias("BDP")]
+    [Alias("BDP")]
     $BackupDirPath = $null,
     [string]
     $TempZipFileDir = $env:TEMP,
@@ -248,7 +324,7 @@ param
     $Retries = 5,
     [int]
     $RetryWaitSec = 10,
-    [alias("L")]
+    [Alias("L")]
     [switch]
     $Log = $false,
     [switch]
@@ -261,11 +337,40 @@ param
     $ErrorLogAppend = $false,
     [string]
     $ErrorLogFile,
-    [alias("Q")]
+    [Alias("Q")]
     [switch]
     $Quiet = $false,
     [switch]
-    $Shutdown = $false
+    $Shutdown = $false,
+    [ValidateSet(
+        "Never", "Always", "OnError", "OnSuccess",
+        "OnBackup", "OnBackupError", "OnBackupSuccess",
+        "OnRestore", "OnRestoreError", "OnRestoreSuccess")]
+    [string]
+    $SendMail = "Never",
+    [string]
+    $From = $null,
+    [string]
+    $To,
+    [string]
+    $SmtpServer,
+    [int]
+    $Port = 0,
+    [switch]
+    $UseSsl = $false,
+    [string]
+    $CredentialFile = "",
+    [Alias("Prompt")]
+    [switch]
+    $PromptForCredential = $false,
+    [switch]
+    [Alias("Save")]
+    $SaveCredential = $false,
+    [switch]
+    $Anonymous = $false,
+    [ValidateSet("Never", "OnError", "OnSuccess", "Always")]
+    [string]
+    $SendLogFile = "Never"
 )
 
 #-----------------------------[ DECLARATIONS ]-----------------------------
@@ -295,9 +400,6 @@ $BackupDirNameFormat = "yyyyMMddHHmmss"
 
 # Extension of config file.
 $ConfigFileExt = ".json"
-
-#Extension of the log file.
-$LogFileExt = ".log"
 
 # Subfolders in the backup directory.
 $SubDirFiles    = "0"
@@ -580,7 +682,7 @@ function LogError {
 
     # Send message to console.
     if (!$script:Quiet) {
-        $success = Log $message $null Red
+        (Log $message $null Red) | Out-Null
     }
 
     # If we failed to write to the log file, don't try again.
@@ -612,7 +714,7 @@ function LogWarning {
     )
 
     # Send message to console.
-    $success = Log $message $null Yellow
+    (Log $message $null Yellow) | Out-Null
 
     # If we failed to write to the log file, don't try again.
     if (!(Log $message $script:LogFile))
@@ -636,7 +738,7 @@ function LogMessage {
     # Send message to console.
     if ($writeToConsole) {
 
-        $success = Log $message $null
+        (Log $message $null) | Out-Null
     }
 
     if (!$writeToFile) {
@@ -663,7 +765,7 @@ function InitLog {
     }
 
     if (!$script:LogFile) {
-        $logFileName = (Split-Path -Path $PSCommandpath -Leaf) + ".log"
+        $logFileName = (Split-Path -Path $PSCommandPath -Leaf) + ".log"
 
         $script:LogFile = Join-Path $script:BackupDirPath $logFileName
     }
@@ -726,6 +828,410 @@ function InitLog {
     }
 
     return $true
+}
+
+function InitMailSetting {
+    if (!$script:smtpServer) {
+        $script:SendMail = $false
+    }
+}
+
+function InitCredentialFileName {
+    if (!$script:SendMail) {
+        return
+    }
+
+    if ($script:Anonymous) {
+        return
+    }
+
+    if (!$script:CredentialFile) {
+        $script:CredentialFile = $PSCommandPath + ".xml"
+    }
+
+    LogMessage "SMTP server info file is set to:"
+    LogMessage (Indent (Split-Path -Path $script:CredentialFile -Leaf))
+    LogMessage "in:"
+    LogMessage (Indent (Split-Path -Path $script:CredentialFile -Parent))
+}
+
+function GetCredential {
+    param (
+        [string]
+        $file,
+        [bool]
+        $prompt,
+        [bool]
+        $save,
+        [string]
+        $smtpServer
+    )
+
+    $credential =  $null
+
+    # If we have the credential file path (which we should in any case)...
+    if ($file) {
+
+        # ...and file exists, get credentials from the file.
+        if (Test-Path -Path $file) {
+            try {
+                $credential = Import-CliXml -Path  $file
+            }
+            catch {
+                LogError "Cannot import credentials from:"
+                LogError (Indent (Split-Path -Path $file -Leaf))
+                LogError "in:"
+                LogError (Indent (Split-Path -Path $file -Parent))
+
+                LogException $_
+
+                $Error.Clear()
+            }
+        }
+
+        if ($credential) {
+            return $credential
+        }
+
+        if ((!$credential) -and (!$prompt)) {
+            LogError "Cannot import credentials from:"
+            LogError (Indent (Split-Path -Path $file -Leaf))
+            LogError "in:"
+            LogError (Indent (Split-Path -Path $file -Parent))
+            LogError "The file does not seem to exist."
+
+            return $null
+        }
+    }
+
+    # Show prompt to enter credentials.
+    if ($prompt) {
+        try {
+            $caption = "SMTP Server Authentication"
+            $message = "Please enter your credentials for " + $smtpServer
+
+            $credentialType = [System.Management.Automation.PSCredentialTypes]::Generic
+            $validateOption = [System.Management.Automation.PSCredentialUIOptions]::None
+
+            $credential = $Host.UI.PromptForCredential(
+                $caption,
+                $message,
+                "",
+                "",
+                $credentialType,
+                $validateOption)
+        }
+        catch {
+            LogError "Cannot get credentials."
+
+            LogException $_
+
+            $Error.Clear()
+        }
+    }
+
+    # Save entered credentials if needed.
+    if ($credential -and $save) {
+        try {
+            LogMessage "Saving credentials to:"
+            LogMessage (Indent (Split-Path -Path $file -Leaf))
+            LogMessage "in:"
+            LogMessage (Indent (Split-Path -Path $file -Parent))
+
+            Export-CliXml -Path $file -InputObject $credential
+        }
+        catch {
+            LogError "Cannot save credentials to:"
+            LogError (Indent (Split-Path -Path $file -Leaf))
+            LogError "in:"
+            LogError (Indent (Split-Path -Path $file -Parent))
+
+            LogException $_
+
+            $Error.Clear()
+        }
+    }
+
+    return $credential
+}
+
+function MustSendAttachment {
+    param (
+        [string]
+        $when,
+        [bool]
+        $success
+    )
+
+    if ($when -eq "Always") {
+        return $true
+    }
+
+    if ($when -eq "Never") {
+        return $false
+    }
+
+    if ($when -eq "OnSuccess") {
+        if ($success -ne $true) {
+            return $false
+        }
+        else {
+            return $true
+        }
+    }
+
+    if ($when -eq "OnError") {
+        if ($success -ne $false) {
+            return $false
+        }
+        else {
+            return $true
+        }
+    }
+
+    return $true
+}
+
+function MustSendMail {
+    param (
+        [string]
+        $when,
+        [string]
+        $mode,
+        [ValidateSet($null, $true, $false)]
+        [object]
+        $success = $null
+    )
+
+    if ($when -eq "Never") {
+        return $false
+    }
+
+    if ($when -eq "Always") {
+        return $true
+    }
+
+    if ($when -eq "OnSuccess") {
+        if ($success -ne $false) {
+            return $true
+        }
+        else {
+            return $false
+        }
+    }
+
+    if ($when -eq "OnError") {
+        if ($success -ne $true) {
+            return $true
+        }
+        else {
+            return $false
+        }
+    }
+
+    if ($when.StartsWith("OnBackup")) {
+        if ($mode -eq "Restore") {
+            return $false
+        }
+        if (($when.EndsWith("Error")) -and ($success-eq $true)) {
+            return $false
+        }
+        if (($when.EndsWith("Success")) -and ($success-eq $false)) {
+            return $false
+        }
+
+        return $true
+    }
+
+    if ($when.StartsWith("OnRestore")) {
+        if ($mode -ne "Restore") {
+            return $false
+        }
+        if (($when.EndsWith("Error")) -and ($success-eq $true)) {
+            return $false
+        }
+        if (($when.EndsWith("Success")) -and ($success-eq $false)) {
+            return $false
+        }
+
+        return $true
+    }
+
+    return $true
+}
+
+function SendMail {
+    param (
+        [string]
+        $from,
+        [string]
+        $to,
+        [string]
+        $subject,
+        [string]
+        $body,
+        [string[]]
+        $attachment,
+        [string]
+        $smtpServer,
+        [int]
+        $port,
+        [PSCredential]
+        $credential,
+        [bool]
+        $useSsl = $true,
+        [bool]
+        $bodyAsHtml = $true
+    )
+
+    $params = @{}
+
+    if (($port) -and ($port -gt 0)) {
+        $params.Add("Port", $port)
+    }
+
+    if ($credential) {
+        $params.Add("Credential", $credential)
+    }
+
+    if ($useSsl) {
+        $params.Add("UseSsl", $true)
+    }
+
+    if ($bodyAsHtml){
+        $params.Add("BodyAsHtml", $true)
+    }
+
+    if ($Attachment -and ($Attachment.Count -gt 0)) {
+        $params.Add("Attachment", $attachment)
+    }
+
+    try {
+        LogMessage "Sending email notification to:"
+        LogMessage (Indent $to)
+
+        Send-MailMessage `
+            @params `
+            -From $from `
+            -To $to `
+            -Subject $subject `
+            -Body $body `
+            -SmtpServer $smtpServer
+    }
+    catch {
+        LogException $_
+    }
+}
+
+function FormatEmail {
+    param (
+        [string]
+        $computerName,
+        [string]
+        $scriptPath,
+        [string]
+        $backupMode,
+        [string]
+        $backupDir,
+        [DateTime]
+        $scriptStartTime,
+        [DateTime]
+        $scriptEndTime,
+        [bool]
+        $success = $true
+    )
+
+    $scriptDuration = (New-TimeSpan -Start $scriptStartTime -End $scriptEndTime).ToString("hh\:mm\:ss\.fff")
+
+    $body = "`
+<!DOCTYPE html>
+<head>
+<title>Plex Backup Report</title>
+</head>
+<body>
+<table style='#STYLE_PAGE#'>
+<tr>
+<td>
+<tr>
+<td style='#STYLE_TEXT#'>
+Plex backup on <span style='#STYLE_VAR_TEXT#'>#VALUE_COMPUTER_NAME#</span> completed with:
+</td>
+</tr>
+<tr>
+<td style='#STYLE_RESULT#'>
+#VALUE_RESULT#
+</td>
+</tr>
+<tr>
+<td style='#STYLE_TEXT#'>
+The script
+<span style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_PATH#</span>
+ran in the
+<span style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_MODE#</span>
+mode. The output was saved to
+<span style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_DIR#</span>.
+The backup job started at
+<span style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_START_TIME#</span>
+and ended at
+<span style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_END_TIME#</span>;
+it ran for
+<span style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_DURATION#</span> (hr:min:sec.msec).
+</td>
+</tr>
+</td>
+</tr>
+</table>
+</body>
+</html>
+"
+    $stylePage          = 'max-width: 800px;'
+    $styleFontFamily    = 'font-family: Verdana, Trebuchet MS, Arial;'
+    $styleLineHeight    = 'line-height: 140%;'
+    $styleParagraph     = ''
+    $styleResult        = 'padding-left: 18px;padding-bottom: 6px;font-size: 18px;font-weight: bold;'
+    $styleResultColor   = ''
+    $styleTextFontSize  = 'font-size: 14px;'
+    $styleTextColor     = 'color: #363636;'
+    $styleTextFont      = $styleTextFontSize + $styleFontFamily
+    $styleErrorColor    = 'color: #cc0000;'
+    $styleSuccessColor  = 'color: #008800;'
+    $styleVarTextFont   = 'font-weight: bold;'
+    $resultText         = ''
+
+    if ($success) {
+        $styleResultColor = $styleSuccessColor
+        $resultText  = 'SUCCESS'
+    }
+    else {
+        $styleResultColor  = $styleErrorColor
+        $resultText = 'ERROR'
+    }
+
+    $emailTokens = @{
+        STYLE_PAGE              = $stylePage
+        STYLE_TEXT              = $styleParagraph + $styleLineHeight + $styleTextColor + $styleTextFont
+        STYLE_VAR_TEXT          = $styleVarTextFont
+        STYLE_RESULT            = $styleParagraph + $styleResult + $styleResultColor + $styleFontFamily
+        STYLE_ERROR_BLOCK       = $styleErrorBlock
+        STYLE_SUCCESS_BLOCK     = $styleSuccessBlock
+        VALUE_COMPUTER_NAME     = $computerName
+        VALUE_SCRIPT_PATH       = $scriptPath
+        VALUE_BACKUP_MODE       = $backupMode
+        VALUE_BACKUP_DIR        = $backupDir
+        VALUE_SCRIPT_START_TIME = $scriptStartTime
+        VALUE_SCRIPT_END_TIME   = $scriptEndTime
+        VALUE_SCRIPT_DURATION   = $scriptDuration
+        VALUE_RESULT            = $resultText
+    }
+
+    # $htmlEmail = Get-Content -Path TemplateLetter.txt -RAW
+    foreach ($token in $emailTokens.GetEnumerator())
+    {
+        $pattern = '#{0}#' -f $token.key
+        $body = $body -replace $pattern, $token.Value
+    }
+
+    return $body
 }
 
 function GetTimestamp {
@@ -885,7 +1391,7 @@ function StopPlexServices {
             }
 
 
-            $i = $stoppedPlexServices.Add($service)
+            ($stoppedPlexServices.Add($service)) | Out-Null
         }
     }
 
@@ -1501,7 +2007,7 @@ function RobocopyPlexAppData {
             $excludePaths = [System.Collections.ArrayList]@()
 
             foreach ($excludeDir in $excludeDirs) {
-                $i = $excludePaths.Add((Join-Path $source $excludeDir))
+                ($excludePaths.Add((Join-Path $source $excludeDir))) | Out-Null
             }
 
             robocopy $source $destination /MIR /R:$retries /W:$retryWaitSec /MT /XD $excludePaths
@@ -2034,10 +2540,10 @@ Clear-Host
 # Make sure we have no pending errors.
 $Error.Clear()
 
-$StartTime = Get-Date
+$startTime = Get-Date
 
 LogMessage "Script started at:" $false
-LogMessage (Indent $StartTime) $false
+LogMessage (Indent $startTime) $false
 
 if (!(InitConfig)) {
     LogWarning "Cannot initialize run-time configuration settings." $false
@@ -2052,17 +2558,54 @@ $BackupDirName, $BackupDirPath =
         $BackupdDirNameFormat `
         $RegexBackupDirNameFormat `
         $BackupDirPath `
-        $StartTime
+        $startTime
 
 if ((!$BackupDirName) -or (!$BackupDirPath)) {
     LogError "Cannot determine location of the backup folder." $false
     return
 }
 
+# Initialize log file settings.
 if (!(InitLog)) {
     return
 }
 
+# Set the credential file name.
+InitCredentialFileName
+
+$credential = $null
+
+# Get credentials from a file.
+if (MustSendMail $SendMail $Mode) {
+    if (!$Anonymous) {
+        $credential = GetCredential `
+            $CredentialFile `
+            $PromptForCredential `
+            $SaveCredential `
+            $SmtpServer
+    }
+}
+
+# If the From address is not speciifed, get it from credential object.
+if (!$From) {
+    if ($credential) {
+        $From = $credential.UserName
+    }
+    else {
+        $SendMail = $false
+    }
+}
+if (!$To) {
+    $To = $From
+}
+
+# Check if we need to send log file as an attachment.
+$attachment = $null
+if (MustSendAttachment $SendLogFile $false) {
+    $attachment = @($LogFile)
+}
+
+# Okay, at this point we are ready to roll.
 LogMessage "Script started at:" $true $false
 LogMessage (Indent $StartTime) $true $false
 
@@ -2091,40 +2634,153 @@ if ($ErrorLogFile) {
 }
 
 # Determine path to Plex Media Server executable.
-$Success, $PlexServerExePath =
+$success, $plexServerExePath =
     GetPlexMediaServerExePath `
         $PlexServerExePath `
         $PlexServerExeFileName
 
-if (!$Success) {
+$computerName   = $env:ComputerName
+$scriptPath     = $PSCommandPath
+$subject        = $null
+$subjectError   = "Plex backup failed"
+$subjectSuccess = "Plex backup completed"
+$backupMode     = $null
+
+if ($Robocopy) {
+    $backupMode = $Mode.ToUpper() + " -ROBOCOPY"
+}
+else {
+    $backupMode = $Mode.ToUpper()
+}
+
+if (!$success) {
+    if (MustSendMail $SendMail $Mode $success) {
+        $mailBody = FormatEmail `
+            $computerName `
+            $scriptPath `
+            $backupMode `
+            $BackupDirPath `
+            $startTime `
+            (Get-Date) `
+            $success
+
+        if ($mailBody) {
+            SendMail `
+                $From `
+                $To `
+                $subjectError `
+                $mailBody `
+                $attachment `
+                $SmtpServer `
+                $Port `
+                $credential `
+                $UseSsl
+        }
+    }
+
     return
 }
 
 # Get list of all running Plex services (match by display name).
 try {
-    $PlexServices = GetRunningPlexServices $PlexServiceNameMatchString
+    $plexServices = GetRunningPlexServices $PlexServiceNameMatchString
 }
 catch {
     LogException $_
+
+    if (MustSendMail $SendMail $Mode $success) {
+        $mailBody = FormatEmail `
+            $computerName `
+            $scriptPath `
+            $backupMode `
+            $BackupDirPath `
+            $startTime `
+            (Get-Date) `
+            $success
+
+        if ($mailBody) {
+            SendMail `
+                $From `
+                $To `
+                $subjectError `
+                $mailBody `
+                $attachment `
+                $SmtpServer `
+                $Port `
+                $credential `
+                $UseSsl
+        }
+    }
+
     return
 }
 
 # Stop all running Plex services.
-$Success, $PlexServices = StopPlexServices $PlexServices
-if (!$Success) {
-    StartPlexServices $PlexServices
+$success, $plexServices = StopPlexServices $plexServices
+if (!$success) {
+    StartPlexServices $plexServices
+
+    if (MustSendMail $SendMail $Mode $success) {
+        $mailBody = FormatEmail `
+            $computerName `
+            $scriptPath `
+            $backupMode `
+            $BackupDirPath `
+            $startTime `
+            (Get-Date) `
+            $success
+
+        if ($mailBody) {
+            SendMail `
+                $From `
+                $To `
+                $subjectError `
+                $mailBody `
+                $attachment `
+                $SmtpServer `
+                $Port `
+                $credential `
+                $UseSsl
+        }
+    }
+
     return
 }
 
 # Stop Plex Media Server executable (if it's still running).
-if (!(StopPlexMediaServer $PlexServerExeFileName $PlexServerExePath)) {
-    StartPlexServices $PlexServices
+if (!(StopPlexMediaServer $plexServerExeFileName $PlexServerExePath)) {
+    StartPlexServices $plexServices
+
+    if (MustSendMail $SendMail $Mode $success) {
+        $mailBody = FormatEmail `
+            $computerName `
+            $scriptPath `
+            $backupMode `
+            $BackupDirPath `
+            $startTime `
+            (Get-Date) `
+            $success
+
+        if ($mailBody) {
+            SendMail `
+                $From `
+                $To `
+                $subjectError `
+                $mailBody `
+                $attachment `
+                $SmtpServer `
+                $Port `
+                $credential `
+                $UseSsl
+        }
+    }
+
     return
 }
 
 # Restore Plex app data from backup.
 if ($Mode -eq "Restore") {
-    $Success = RestorePlexFromBackup `
+    $success = RestorePlexFromBackup `
         $PlexAppDataDir `
         $PlexRegKey `
         $BackupRootDir `
@@ -2147,7 +2803,7 @@ if ($Mode -eq "Restore") {
 }
 # Back up Plex app data.
 else {
-    $Success = CreatePlexBackup `
+    $success = CreatePlexBackup `
         $Mode `
         $PlexAppDataDir `
         $PlexRegKey `
@@ -2173,25 +2829,67 @@ else {
 }
 
 # Start all previously running Plex services (if any).
-StartPlexServices $PlexServices
+StartPlexServices $plexServices
 
 # Start Plex Media Server (if it's not running).
 if (!($Shutdown)) {
-    StartPlexMediaServer $PlexServerExeFileName $PlexServerExePath
+    StartPlexMediaServer $plexServerExeFileName $PlexServerExePath
 }
 
 LogMessage "Script ended at:"
 LogMessage (Indent (GetTimestamp))
 
-$EndTime = Get-Date
+$endTime = Get-Date
 
 LogMessage "Script ran for (hr:min:sec.msec):"
-LogMessage (Indent (New-TimeSpan -Start $StartTime -End $EndTime).ToString("hh\:mm\:ss\.fff"))
+LogMessage (Indent (New-TimeSpan -Start $startTime -End $endTime).ToString("hh\:mm\:ss\.fff"))
 
 LogMessage "Script returned:"
-if ($Success) {
+if ($success) {
     LogMessage (Indent "SUCCESS")
+    $subject = $subjectSuccess
 }
 else {
     LogMessage (Indent "ERROR")
+    $subject = $subjectError
 }
+
+if ($success) {
+    $subject = $subjectSuccess
+}
+else {
+    $subject = $subjectError
+}
+
+if (MustSendAttachment $SendLogFile $success) {
+    $attachment = @($LogFile)
+}
+else {
+    $attachment = null
+}
+
+if (MustSendMail $SendMail $Mode $success) {
+    $mailBody = FormatEmail `
+        $computerName `
+        $scriptPath `
+        $backupMode `
+        $BackupDirPath `
+        $startTime `
+        $endTime `
+        $success
+
+    if ($mailBody) {
+        SendMail `
+            $From `
+            $To `
+            $subject `
+            $mailBody `
+            $attachment `
+            $SmtpServer `
+            $Port `
+            $credential `
+            $UseSsl
+    }
+}
+
+LogMessage "Done."
