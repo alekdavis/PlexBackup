@@ -151,6 +151,7 @@ Get-Credential | Export-CliXml -Path "PathToFile.xml"
 IMPORTANT: Most public providers, such as Gmail, Yahoo, Hotmail, and so on, have special requirements that you need to meet before you can use their SMTP servers to send email. For example, to use Gmail's SMTP server, you need to do the following: 
 
 (a) If you have two-factor authentication, or, as Google calls it _two-step verification_, enabled, you cannot use your own password, so you need to generate an application password and use it along with your Gmail email address (see [Sign in using App Passwords](https://support.google.com/mail/answer/185833?hl=en)).
+
 (b) If you are not using 2FA, you can use your own password, but may need to enable less secure application access in your account settings (see [Let less secure apps access your account](https://support.google.com/accounts/answer/6010255?hl=en)).
 
 For additional information or if you run into any issues, check support articles covering your provider.
