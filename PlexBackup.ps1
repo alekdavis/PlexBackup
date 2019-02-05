@@ -177,14 +177,14 @@ OnBackupError, OnBackupSuccess, OnRestore (on either error or success),
 OnRestoreError, and OnRestoreSuccess.
 
 .PARAMETER From
-Specifies the From address when email notification gets sent. If this value
+Specifies the email address when email notification sender. If this value
 is not provided, the username from the credentails saved in the credentials
-file or enetered at the credentials prompt will be used. Ifd the From address
+file or enetered at the credentials prompt will be used. If the From address
 cannot be determined, the notification will not be sent.
 
 .PARAMETER To
-Specifies the To address when email notification gets sent. If this value is
-not provided, the addressed defined in the To parameter will be used.
+Specifies the email address of the email recepient. If this value is not
+provided, the addressed defined in the To parameter will be used.
 
 .PARAMETER SmtpServer
 Defines the SMTP server host. If not specified, the notification will not
@@ -195,8 +195,8 @@ Specifies an alternative port on the SMTP server. Default: 0 (zero, i.e.
 default port 25 will be used).
 
 .PARAMETER UseSsl
-Tells the script to use the Secure Sockets Layer (SSL) protocol to establish
-a connection to the remote computer to send mail. By default, SSL is not used.
+Tells the script to use the Secure Sockets Layer (SSL) protocol when
+connecting to the SMTP server. By default, SSL is not used.
 
 .PARAMETER CredentialFile
 Path to the file holding username and encrypted password of the account that
@@ -225,7 +225,7 @@ not specified in the credential file.
 Tells the script to save the SMTP server credentials in the credential file.
 
 .Parameter Anonymous
-Tells the script to not use credentials when sending email notification.
+Tells the script to not use credentials when sending email notifications.
 
 .Parameter SendLogFile
 Indicates in which case the script must send an attachment along with th email
