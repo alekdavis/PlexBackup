@@ -296,6 +296,7 @@ _-CredentialFile_
 Path to the file holding username and encrypted password of the account that has permission to send mail via the SMTP server.
 
 _-PromptForCredential, -Prompt_
+
 Tells the script to prompt user for SMTP server credentials (when they are not specified in the credential file).
 
 _-SaveCredential, -Save_
