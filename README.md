@@ -5,9 +5,9 @@ This PowerShell script can back up and restore [Plex](https://www.plex.tv/) appl
 Plex does not offer a meaningful backup feature. Yes, it can back up a Plex database, but if you need to move your Plex instance to a different system or restore it after a hard drive crash, a single database backup file will be of little use. For a meaningful backup, in addition to the Plex database, you will need a copy of the Plex Windows registry key and tens (or hundreds) of thousands of Plex application data files. Keep in mind that backing up gigabytes of data files may take a long time, especially when they are copied remotely, such as to a NAS share. And you must keep the Plex Media Server stopped while the backup job is running (otherwise, it can corrupt the data). In the other words, a meaningful Plex backup is a challenge to which I could not find a good solution, so I decided to build my own. Ladies and gentlemen, meet PlexBackup.ps1.
 
 ## Overview
-PlexBackup.ps1 (or, briefly, _PlexBackup_) is a PowerShell script that can back up and restore a Plex instance on a Windows system. The script backs up the Plex database, Windows registry key, and app data folders essential for the Plex operations (it ignores the non-essential files, such as logs or crash reports). And it makes sure that Plex is not running when the backup job is active (which may take hours).
+PlexBackup.ps1 (or, briefly, _PlexBackup_) is a PowerShell script that can back up and restore a Plex instance on a Windows system. The script backs up the Plex database, Windows registry key, and app data folders essential for the Plex operations (it ignores the non-essential files, such as logs or crash reports). And it makes sure that Plex is not running when the backup job is active (which may take hours). And it can send mail, too.
 
-The script will not back up media (video, audio, images) or Plex program files. You must use different backup techniques for those. For example, you can keep your media files on a RAID 5 disk array. And you don't really need to back up Plex program files, since you can always download them. But for everything else, PlexBackup is your guy.
+IMPORTANT: The script will not back up media (video, audio, images) or Plex program files. You must use different backup techniques for those. For example, you can keep your media files on a RAID 5 disk array. And you don't really need to back up Plex program files, since you can always download them. But for everything else, PlexBackup is your guy.
 
 ### Modes of operation
 PlexBackup can run in three modes (specified by the `Mode` switch):
@@ -19,7 +19,7 @@ PlexBackup can run in three modes (specified by the `Mode` switch):
 In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. After the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process.
 
 ### Types of backup
-The script can perform two types of backup. 
+The script can perform two types of backup:
 
 #### Compressed
 By default, the script compresses every essential folder under the root of the Plex application data folder (_Plex Media Server_) and saves the compressed data as separate ZIP files. For better efficiency (in case the backup folder is remote, such as on a NAS share), it first compresses the data in a temporary local file and then copies the compressed file to the backup folder (you can compress the data and save the ZIP files directly to the backup folder by setting the value of the `TempZipFileDir` parameter to null or empty string). There is a problem with PowerShell's compression routine that fails to process files and folders with paths that are longer than 260 characters. If you get this error, use the `SpecialPlexAppDataSubDirs` parameter (in code or config file) to specify the folders that are too long (or parents of the subfolders or files that are too long) and PlexBackup will copy them as-is without using compression (by default, the following application data folder is not compressed: `Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated`).
@@ -49,7 +49,7 @@ If the execution policy does not allow running scripts, do the following:
 Set-ExecutionPolicy RemoteSigned
 ```
 
-This will allow running unsigned scripts that you write on your local computer and signed scripts downloaded from the Internet (okay, this is not a signed script, but if you copy it locally, it should work). For additional information, see [Running Scripts](https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)) at Microsoft TechNet Library.
+This will allow running unsigned scripts that you write on your local computer and signed scripts downloaded from the Internet (okay, this is not a signed script, but if you copy it locally, make a non-destructive change--e.g. add a space character, remove the space character, and save the file--it should work). For additional information, see [Running Scripts](https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)) at Microsoft TechNet Library.
 
 ### Runtime parameters
 The default value of the PlexBackup script's runtime parameters are defined in code, but you can override some of them via command-line arguments or config file settings.
@@ -87,7 +87,18 @@ A config file must use JSON formatting, such as:
     "ErrorLog": { "value": true  },
     "ErrorLogAppend": { "value": null  },
     "ErrorLogFile": { "value": null },
-    "Shutdown": { "value": null }
+    "Shutdown": { "value": null },
+    "SendMail": { "value": false },
+    "From": { "value": null },
+    "To": { "value": null },
+    "SmtpServer": { "value": "smtp.gmail.com" },
+    "Port": { "value": 587 },
+    "UseSsl": { "value": true },
+    "CredentialFile": { "value": null },
+    "PromptForCredential": { "value": true },
+    "SaveCredential": { "value": true },
+    "Anonymous": { "value": null },
+    "SendLogFile": { "value": true }
 }
 ```
 The `_meta` element describes the file and the file structure. It does not include any configuration settings. The important attributes  of the `_meta` element are:
@@ -105,6 +116,47 @@ Use the `ErrorLog` switch to write error messages to a dedicated error log file.
 
 ### Backup snapshots
 Every time you run a new backup job, the script will create a backup snapshot folder. The name of the folder will reflect the timestamp of when the script started. Use the `Keep` switch to specify how many backup snapshots you want to keep: _0_ (keep all previously created backups), _1_ (keep the current backup snapshot only), _2_ (keep the current backup snapshot and one before it), _3_ (keep the current backup snapshot and two most recent snapshots), and so on. The default value is _3_.
+
+### Email notification
+Use the `Sendmail` parameter to let PlexBackup know whether or when you want to receive email notifications about the backup job completion:
+
+- _Never_: by default, email notifications will not be sent
+- _Always_: notifications will be sent always
+- _OnError_: receive notifications if an error occurs during any operation
+- _OnSuccess_: receive notifications only if an operation was successful
+- _OnBackup_: receive notifications about new and resumed backup operations on error or success
+- _OnBackupError_: receive notifications about new and resumed backup operations on error only
+- _OnBackupSuccess_: receive notifications about new and resumed backup operations on success only
+- _OnRestore_: receive notifications about new and resumed backup operations on error or success
+- _OnRestoreError_: receive notifications about failed restore operations only
+- _OnRestoreSuccess_: receive notifications about failed restore operations only
+
+To receive a copy of the log file along with the email notification, use the _SendLogFile_ parameter with one of the following values:
+
+- _Never_: by default, the log file will not be sent as an email message attachment
+- _Always_: the log file will be sent always
+- _OnSuccess_: only receive the copy of the log file if an error occurs
+- _OnSuccess: only receive the copy of the log file if no errors occur
+
+#### SMTP server
+When sending email notifications, Plex backup will need to know how to connect to the SMTP server. You can specify the server via the `SmtpServer` parameter, such as: `-SmtpServer smtp.gmail.com `. If the server is using a non-default SMTP port, use the ~Port` parameter to specify the port, such as; `-Port 587`. If you want your message to be sent over encrypted (SSL) channel, set the `UseSsl` switch. 
+
+#### SMTP credentials
+If your SMTP server does not require explicit authentication, use the `Anonymous` switch to tell PlexBackup to ignore explicit credentials; otherwise, you can ask the script to prompt you for credentials by setting the `PromptForCredentials` switch. If you want these credentials saved in a file (with password encrypted using the computer- and user-specific key) so you do not need to enter them every time the script runs, use the `SaveCredentials` switch. You can specify the path to the credential file via the `CredentialFile` parameters but if you don't, the script will try to use the default file named after the running script with the `.xml` extension, such as `PlexBackup.psq.xml`. You can also generate the credential file in advance by running the following PowerShell command:
+
+```PowerShell
+Get-Credential | Export-CliXml -Path "PathToFile.xml"
+```
+
+IMPORTANT: Most public providers, such as Gmail, Yahoo, Hotmail, and so on, have special requirements that you need to meet before you can use their SMTP servers to send email. For example, to use Gmail's SMTP server, you need to do the following: 
+
+(a) If you have two-factor authentication, or, as Google calls it _two-step verification_, enabled, you cannot use your own password, so you need to generate an application password and use it along with your Gmail email address (see [Sign in using App Passwords](https://support.google.com/mail/answer/185833?hl=en)).
+(b) If you are not using 2FA, you can use your own password, but may need to enable less secure application access in your account settings (see [Let less secure apps access your account](https://support.google.com/accounts/answer/6010255?hl=en)).
+
+For additional information or if you run into any issues, check support articles covering your provider.
+
+#### Addresses
+By defaul, PlexBackup will use the username provided via the SMTP credentials as both the _To_ and _From_ addresses, but you can set them explicitly via the `To` and `From` parameters. If the `To` parameter is not specified, the recepient's address will be the same as the sender's.
 
 ## Syntax
 ```PowerShell
@@ -127,6 +179,17 @@ Every time you run a new backup job, the script will create a backup snapshot fo
     [[-ErrorLogFile] <String>] `
     [-Quiet|-Q] `
     [-Shutdown] `
+    [[-SendMail] <String>] `
+    [[-From] <String>] `
+    [[-To] <String>] `
+    [[-SmtpServer] <String>] `
+    [[-Port] <Int32>] `
+    [-UseSsl] `
+    [[-CredentialFile] <String>] `
+    [-PromptForCredential] `
+    [-SaveCredential] `
+    [-Anonymous] `
+    [[-SendLogFile] <String>] `
     [<CommonParameters>]
 ```
 ### Arguments
@@ -268,6 +331,12 @@ Restores Plex application data from the latest backup in the default folder hold
 PlexBackup.ps1 -Mode Restore -BackupDirPath "\\MYNAS\PlexBackup\20190101183015"
 ```
 Restores Plex application data from the specified backup folder holding compressed data on a remote share.
+
+### Example
+```PowerShell
+PlexBackup.ps1 -SendMail Always -UseSsl -Prompt -Save -SendLogFile OnError -SmtpServer smtp.gmail.com -Port 587
+```
+Runs a backup job and sends an email notification over an SSL channel. If the backup operation fails, the log file will be attached to the email message. The sender's and the recipient's email addresses will determined from the username of the credential object. The credential object will be set either from the credential file or, if the file does not exist, via a user prompt (in the latter case, the credential object will be saved in the credential file with password encrypted using a user- and computer-specific key).
 
 ### Example
 ```PowerShell
