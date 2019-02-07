@@ -73,7 +73,7 @@
     },
     "SendMail": {
         "hasValue": true,
-        "value": false
+        "value": "Always"
     },
     "From": {
         "value": null
