@@ -232,9 +232,12 @@ Indicates in which case the script must send an attachment along with th email
 notification. Values: Never (default), OnError, OnSuccess, Always.
 
 .NOTES
-Version    : 1.3.0
+Version    : 1.3.1
 Author     : Alek Davis
-Created on : 2019-02-05
+Created on : 2019-02-06
+License    : MIT License
+LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
+Copyright  : (c) 2019 Alek Davis
 
 .LINK
 https://github.com/alekdavis/PlexBackup
@@ -291,6 +294,15 @@ specific key).
 Get-Help .\PlexBackup.ps1
 View help information.
 #>
+
+#------------------------------[ IMPORTANT ]-------------------------------
+
+<#
+PLEASE MAKE SURE THAT THE SCRIPT STARTS WITH THE COMMENT HEADER ABOVE AND
+THE HEADER IS FOLLOWED BY AT LEAST ONE BLANK LINE; OTHERWISE, GET-HELP AND
+GETVERSION COMMANDS WILL NOT WORK.
+#>
+
 #------------------------[ RUN-TIME REQUIREMENTS ]-------------------------
 
 #Requires -Version 4.0
@@ -426,6 +438,51 @@ $SpecialPlexAppDataSubDirs =
 )
 
 #------------------------------[ FUNCTIONS ]-------------------------------
+
+function GetVersionInfo {
+    $notes = $null
+    $notes = @{}
+
+    # Get the .NOTES section of the script header comment.
+    $notesText = (Get-Help -Full $PSCommandPath).alertSet.alert.Text
+
+    # Split the .NOTES section by lines.
+    $lines = ($notesText -split '\r?\n').Trim()
+
+    # Iterate through every line.
+    foreach ($line in $lines) {
+        if (!$line) {
+            continue
+        }
+
+        $name  = $null
+        $value = $null
+
+        # Split line by the first colon (:) character.
+        if ($line.Contains(':')) {
+            $nameValue = $null
+            $nameValue = @()
+
+            $nameValue = ($line -split ':',2).Trim()
+
+            $name = $nameValue[0]
+
+            if ($name) {
+                $value = $nameValue[1]
+
+                if ($value) {
+                    $value = $value.Trim()
+                }
+
+                if (!($notes.ContainsKey($name))) {
+                    $notes.Add($name, $value)
+                }
+            }
+        }
+    }
+
+    return $notes
+}
 
 function InitConfig {
 
@@ -714,7 +771,13 @@ function LogWarning {
     )
 
     # Send message to console.
-    (Log $message $null Yellow) | Out-Null
+    if ($writeToConsole) {
+        (Log $message $null Yellow) | Out-Null
+    }
+
+    if (!$writeToFile) {
+        return
+    }
 
     # If we failed to write to the log file, don't try again.
     if (!(Log $message $script:LogFile))
@@ -737,7 +800,6 @@ function LogMessage {
 
     # Send message to console.
     if ($writeToConsole) {
-
         (Log $message $null) | Out-Null
     }
 
@@ -830,6 +892,22 @@ function InitLog {
     return $true
 }
 
+function PrintVersion {
+    param (
+        [bool]
+        $writeToFile = $true,
+        [bool]
+        $writeToConsole = $true
+    )
+
+    $versionInfo = GetVersionInfo
+    $scriptName  = (Get-Item $PSCommandPath).Basename
+
+    LogMessage ($scriptName +
+        " v" + $versionInfo["Version"] +
+        " " + $versionInfo["Copyright"]) $writeToFile $writeToConsole
+}
+
 function InitMailSetting {
     if (!$script:smtpServer) {
         $script:SendMail = $false
@@ -848,11 +926,6 @@ function InitCredentialFileName {
     if (!$script:CredentialFile) {
         $script:CredentialFile = $PSCommandPath + ".xml"
     }
-
-    LogMessage "SMTP server info file is set to:"
-    LogMessage (Indent (Split-Path -Path $script:CredentialFile -Leaf))
-    LogMessage "in:"
-    LogMessage (Indent (Split-Path -Path $script:CredentialFile -Parent))
 }
 
 function GetCredential {
@@ -2542,6 +2615,7 @@ $Error.Clear()
 
 $startTime = Get-Date
 
+PrintVersion $false $true
 LogMessage "Script started at:" $false
 LogMessage (Indent $startTime) $false
 
@@ -2599,13 +2673,9 @@ if (!$To) {
     $To = $From
 }
 
-# Check if we need to send log file as an attachment.
-$attachment = $null
-if (MustSendAttachment $SendLogFile $false) {
-    $attachment = @($LogFile)
-}
-
 # Okay, at this point we are ready to roll.
+PrintVersion $true $false
+
 LogMessage "Script started at:" $true $false
 LogMessage (Indent $StartTime) $true $false
 
@@ -2631,6 +2701,14 @@ if ($ErrorLogFile) {
     LogMessage (Indent $(Split-Path -Path $ErrorLogFile -Leaf))
     LogMessage "in:"
     LogMessage (Indent $(Split-Path -Path $ErrorLogFile -Parent))
+}
+
+# Check if we need to send log file as an attachment.
+$attachment = $null
+if ($LogFile -and (Test-Path -Path $LogFile -PathType Leaf)) {
+    if (MustSendAttachment $SendLogFile $false) {
+        $attachment = @($LogFile)
+    }
 }
 
 # Determine path to Plex Media Server executable.
