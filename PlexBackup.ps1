@@ -232,9 +232,9 @@ Indicates in which case the script must send an attachment along with th email
 notification. Values: Never (default), OnError, OnSuccess, Always.
 
 .NOTES
-Version    : 1.3.1
+Version    : 1.3.2
 Author     : Alek Davis
-Created on : 2019-02-06
+Created on : 2019-02-07
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -2937,13 +2937,6 @@ if ($success) {
 }
 else {
     $subject = $subjectError
-}
-
-if (MustSendAttachment $SendLogFile $success) {
-    $attachment = @($LogFile)
-}
-else {
-    $attachment = null
 }
 
 if (MustSendMail $SendMail $Mode $success) {
