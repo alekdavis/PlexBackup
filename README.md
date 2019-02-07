@@ -118,7 +118,7 @@ Use the `ErrorLog` switch to write error messages to a dedicated error log file.
 Every time you run a new backup job, the script will create a backup snapshot folder. The name of the folder will reflect the timestamp of when the script started. Use the `Keep` switch to specify how many backup snapshots you want to keep: _0_ (keep all previously created backups), _1_ (keep the current backup snapshot only), _2_ (keep the current backup snapshot and one before it), _3_ (keep the current backup snapshot and two most recent snapshots), and so on. The default value is _3_.
 
 ### Email notification
-Use the `Sendmail` parameter to let PlexBackup know whether or when you want to receive email notifications about the backup job completion:
+Use the `SendMail` parameter to let PlexBackup know whether or when you want to receive email notifications about the backup job completion using one of the following values:
 
 - _Never_: by default, email notifications will not be sent
 - _Always_: notifications will be sent always
@@ -131,15 +131,15 @@ Use the `Sendmail` parameter to let PlexBackup know whether or when you want to 
 - _OnRestoreError_: receive notifications about failed restore operations only
 - _OnRestoreSuccess_: receive notifications about failed restore operations only
 
-To receive a copy of the log file along with the email notification, use the _SendLogFile_ parameter with one of the following values:
+To receive a copy of the log file along with the email notification, set the _SendLogFile_ parameter to:
 
-- _Never_: by default, the log file will not be sent as an email message attachment
+- _Never_: the log file will not be sent as an email message attachment (default)
 - _Always_: the log file will be sent always
-- _OnSuccess_: only receive the copy of the log file if an error occurs
-- _OnSuccess: only receive the copy of the log file if no errors occur
+- _OnError_: only receive the copy of the log file if an error occurs
+- _OnSuccess_: only receive the copy of the log file if no errors occur
 
 #### SMTP server
-When sending email notifications, Plex backup will need to know how to connect to the SMTP server. You can specify the server via the `SmtpServer` parameter, such as: `-SmtpServer smtp.gmail.com `. If the server is using a non-default SMTP port, use the ~Port` parameter to specify the port, such as; `-Port 587`. If you want your message to be sent over encrypted (SSL) channel, set the `UseSsl` switch. 
+When sending email notifications, Plex backup will need to know how to connect to the SMTP server. You can specify the server via the `SmtpServer` parameter, such as: `-SmtpServer smtp.gmail.com `. If the server is using a non-default SMTP port, use the `Port` parameter to specify the port, such as; `-Port 587`. If you want your message to be sent over encrypted (SSL) channel, set the `UseSsl` switch. 
 
 #### SMTP credentials
 If your SMTP server does not require explicit authentication, use the `Anonymous` switch to tell PlexBackup to ignore explicit credentials; otherwise, you can ask the script to prompt you for credentials by setting the `PromptForCredentials` switch. If you want these credentials saved in a file (with password encrypted using the computer- and user-specific key) so you do not need to enter them every time the script runs, use the `SaveCredentials` switch. You can specify the path to the credential file via the `CredentialFile` parameters but if you don't, the script will try to use the default file named after the running script with the `.xml` extension, such as `PlexBackup.psq.xml`. You can also generate the credential file in advance by running the following PowerShell command:
@@ -152,7 +152,7 @@ IMPORTANT: Most public providers, such as Gmail, Yahoo, Hotmail, and so on, have
 
 (a) If you have two-factor authentication, or, as Google calls it _two-step verification_, enabled, you cannot use your own password, so you need to generate an application password and use it along with your Gmail email address (see [Sign in using App Passwords](https://support.google.com/mail/answer/185833?hl=en)).
 
-(b) If you are not using 2FA, you can use your own password, but may need to enable less secure application access in your account settings (see [Let less secure apps access your account](https://support.google.com/accounts/answer/6010255?hl=en)).
+(b) If you are not using two-factor authentication, you can use your own password, but may need to enable less secure application access in your account settings (see [Let less secure apps access your account](https://support.google.com/accounts/answer/6010255?hl=en)).
 
 For additional information or if you run into any issues, check support articles covering your provider.
 
@@ -205,7 +205,7 @@ Path to the optional custom config file (default: _.\PlexBackup.ps1.json_).
 
 _-PlexAppDataDir_
 
-Location of the Plex Media Server application data folder (default: _%localappdata%\Plex Media Server).
+Location of the Plex Media Server application data folder (default: _%localappdata%\Plex Media Server_).
 
 _-BackupRootDir_
 
@@ -268,8 +268,9 @@ _-Shutdown_
 Set this switch to not start the Plex Media Server process at the end of the operation. This could be handy for restore operations, so you can double check that all is good before launching Plex Media Server.
 
 _-SendMail_
+
 Indicates in which case the script must send an email notification about the result of the operation: _Never_ (default),
-_Always_, _OnError_ (for any operation), _OnSuccess_ (for any operation), _OnBackup_ (for both the Backup and Continue modes on either error or success), _OnBackupError_, _OnBackupSuccess_, _OnRestore_ (on either error or success), _OnRestoreError_, and _OnRestoreSuccess_.
+_Always_, _OnError_ (for any operation), _OnSuccess_ (for any operation), _OnBackup_ (for both the _Backup_ and _Continue_ modes on either error or success), _OnBackupError_, _OnBackupSuccess_, _OnRestore_ (on either error or success), _OnRestoreError_, and _OnRestoreSuccess_.
 
 _-From_
 
@@ -285,7 +286,7 @@ Defines the SMTP server host. If not specified, the notification will not be sen
 
 _-Port_
 
-Specifies an alternative port on the SMTP server. Default: 0 (zero, i.e. the default port 25 will be used).
+Specifies an alternative port on the SMTP server. Default: _0_ (zero, i.e. the default port 25 will be used).
 
 _-UseSsl_
 
@@ -303,16 +304,16 @@ _-SaveCredential, -Save_
 
 Tells the script to save the SMTP server credentials in the credential file.
 
-_Anonymous_
+_-Anonymous_
 
 Tells the script to not use credentials when sending email notifications.
 
-.Parameter SendLogFile
+_-SendLogFile_
 
 Indicates in which case the script must send an attachment along with th email
-notification. Values: Never (default), OnError, OnSuccess, Always.
+notification. Values: _Never_ (default), _OnError_, _OnSuccess_, _Always_.
 
-_<CommonParameters>_
+_-<CommonParameters>_
     
 Common PowerShell parameters (the script is not using these explicitly).
 
