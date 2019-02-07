@@ -313,7 +313,7 @@ _-SendLogFile_
 Indicates in which case the script must send an attachment along with th email
 notification. Values: _Never_ (default), _OnError_, _OnSuccess_, _Always_.
 
-_-<CommonParameters>_
+_-&lt;CommonParameters&gt;_
     
 Common PowerShell parameters (the script is not using these explicitly).
 
