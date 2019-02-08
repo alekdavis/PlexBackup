@@ -317,6 +317,22 @@ _-&lt;CommonParameters&gt;_
     
 Common PowerShell parameters (the script is not using these explicitly).
 
+## Returns
+
+To check whether the backup script executed successfully or encountered an error, check the value of the `$LASTEXITCODE` variable: _0_ (zero) indicates success, while any positive number indicates an error. Exit code of _1_ implies that the error occurred during the backup or the restore operation. Exit codes higher than _1_ indicate that a problem occurred before the script launched a backup or a restore job. You should not need this, but just in case, here is the list of currently supported exit codes:
+
+```PowerShell
+$EXITCODE_SUCCESS            = 0 # success
+$EXITCODE_ERROR              = 1 # error during backup or restore operation
+$EXITCODE_ERROR_CONFIG       = 2 # error processing config file
+$EXITCODE_ERROR_BACKUPDIR    = 3 # problem determining or setting backup folder
+$EXITCODE_ERROR_LOG          = 4 # problem with log file(s)
+$EXITCODE_ERROR_GETPMSEXE    = 5 # cannot determine path to PMS executable
+$EXITCODE_ERROR_GETSERVICES  = 6 # cannot read Plex Windows services
+$EXITCODE_ERROR_STOPSERVICES = 7 # cannot stop Plex Windows services
+$EXITCODE_ERROR_STOPPMSEXE   = 8 # cannot stop PMS executable file
+```
+
 ## Examples
 
 ### Example
