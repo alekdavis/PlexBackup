@@ -20,7 +20,13 @@ When setting up the Plex backup scheduled task, please make sure that it runs:
 - as the same account as you Plex Media Server process
 - with highest privileges
 
-The action must be `PowerShell.exe`, and the argument for the action would be similar to these: `-WindowStyle Hidden -ExecutionPolicy Bypass "C:\PathToBackupScript\PlexBackup.ps1"`.
+The action must be:
+
+`PowerShell.exe`
+
+The program/script arguments would be similar to:
+
+`-WindowStyle Hidden -ExecutionPolicy Bypass "C:\PathToYourBackupScript\PlexBackup.ps1"`
 
 The following screenshots are just for your reference. You may want to adjust them to fit your needs.
 
