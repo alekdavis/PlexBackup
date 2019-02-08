@@ -235,7 +235,7 @@ Indicates in which case the script must send an attachment along with th email
 notification. Values: Never (default), OnError, OnSuccess, Always.
 
 .NOTES
-Version    : 1.3.2
+Version    : 1.3.3
 Author     : Alek Davis
 Created on : 2019-02-07
 License    : MIT License
@@ -442,15 +442,15 @@ $SpecialPlexAppDataSubDirs =
 
 #------------------------------[ EXIT CODES]-------------------------------
 
-$EXITCODE_SUCCESS            = 0
-$EXITCODE_ERROR              = 1
-$EXITCODE_ERROR_CONFIG       = 2
-$EXITCODE_ERROR_BACKUPDIR    = 3
-$EXITCODE_ERROR_LOG          = 4
-$EXITCODE_ERROR_GETPMSEXE    = 5
-$EXITCODE_ERROR_GETSERVICES  = 6
-$EXITCODE_ERROR_STOPSERVICES = 7
-$EXITCODE_ERROR_STOPPMSEXE   = 8
+$EXITCODE_SUCCESS            = 0 # success
+$EXITCODE_ERROR              = 1 # error during backup or restore operation
+$EXITCODE_ERROR_CONFIG       = 2 # error processing config file
+$EXITCODE_ERROR_BACKUPDIR    = 3 # problem determining or setting backup folder
+$EXITCODE_ERROR_LOG          = 4 # problem with log file(s)
+$EXITCODE_ERROR_GETPMSEXE    = 5 # cannot determine path to PMS executable
+$EXITCODE_ERROR_GETSERVICES  = 6 # cannot read Plex Windows services
+$EXITCODE_ERROR_STOPSERVICES = 7 # cannot stop Plex Windows services
+$EXITCODE_ERROR_STOPPMSEXE   = 8 # cannot stop PMS executable file
 
 #------------------------------[ FUNCTIONS ]-------------------------------
 
