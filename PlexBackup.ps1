@@ -2988,7 +2988,7 @@ if (MustSendMail $SendMail $Mode $success) {
 
 LogMessage "Done."
 
-if ($sucess) {
+if ($success) {
     exit $EXITCODE_SUCCESS
 }
 else {
