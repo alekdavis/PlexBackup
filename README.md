@@ -159,6 +159,12 @@ For additional information or if you run into any issues, check support articles
 #### Addresses
 By defaul, PlexBackup will use the username provided via the SMTP credentials as both the _To_ and _From_ addresses, but you can set them explicitly via the `To` and `From` parameters. If the `To` parameter is not specified, the recepient's address will be the same as the sender's.
 
+## See also
+
+[Scheduled backup](SCHEDULED%20BACKUP.md)
+
+[Frequently asked questions (FAQs)](FAQs.md)
+
 ## Syntax
 ```PowerShell
 .\PlexBackup.ps1 `
