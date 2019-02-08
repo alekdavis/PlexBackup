@@ -161,7 +161,7 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
 
 ## See also
 
-[Scheduled backup](SCHEDULED%20BACKUP.md)
+[Scheduled Plex backup](SCHEDULED%20PLEX%20BACKUP.md)
 
 [Frequently asked questions (FAQs)](FAQs.md)
 
