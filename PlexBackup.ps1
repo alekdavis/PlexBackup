@@ -73,6 +73,9 @@ if the command-line -Mode switch is set to 'Backup' and the corresponding
 element in the config file is set to 'Restore' then the script will run in the
 Restore mode.
 
+On success, the script will set the value of the $LASTEXITCODE variable to 0;
+on error, itr will be greater than zero.
+
 This script must run as an administrator.
 
 The execution policy must allow running scripts. To check execution policy,
@@ -437,6 +440,18 @@ $SpecialPlexAppDataSubDirs =
     "Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated"
 )
 
+#------------------------------[ EXIT CODES]-------------------------------
+
+$EXITCODE_SUCCESS            = 0
+$EXITCODE_ERROR              = 1
+$EXITCODE_ERROR_CONFIG       = 2
+$EXITCODE_ERROR_BACKUPDIR    = 3
+$EXITCODE_ERROR_LOG          = 4
+$EXITCODE_ERROR_GETPMSEXE    = 5
+$EXITCODE_ERROR_GETSERVICES  = 6
+$EXITCODE_ERROR_STOPSERVICES = 7
+$EXITCODE_ERROR_STOPPMSEXE   = 8
+
 #------------------------------[ FUNCTIONS ]-------------------------------
 
 function GetVersionInfo {
@@ -564,23 +579,19 @@ function ConvertJsonStringToObject {
 
         # 'return' here acts as 'continue' in loops.
         if ($_.Name.StartsWith("_")) {
-
             return
         }
 
         # For version 1.0 of config file...
         if ($version -eq '1.0') {
-
             # ...first check if 'hasValue' property is set for the element.
             if ($_.Value.hasValue) {
-
                 $hash.Add(($_.Name), $_.Value.value)
             }
             # If 'hasValue' is not set or is missing...
             else {
                 # ...if config file is in strict mode, ignore the element;
                 if ($strictMode) {
-
                     return
                 }
                 # otherwise, check if there is a non-null/non-empty/true value.
@@ -652,7 +663,6 @@ function Log {
             LogException $_
 
             $Error.Clear()
-
             return $false
         }
     }
@@ -1819,6 +1829,7 @@ function DecompressPlexAppDataFolder {
             LogException $_
 
             # Non-critical error; can continue.
+            $Error.Clear()
         }
     }
     # If we don't have a temp folder, restore archive in the Plex app data folder.
@@ -2605,6 +2616,7 @@ function CreatePlexBackup {
 
 #---------------------------------[ MAIN ]---------------------------------
 
+# We will trap errors in the try-catch blocks.
 $ErrorActionPreference = 'Stop'
 
 # Clear screen.
@@ -2613,15 +2625,18 @@ Clear-Host
 # Make sure we have no pending errors.
 $Error.Clear()
 
+# Save time for logging purposes.
 $startTime = Get-Date
 
-PrintVersion $false $true
+# Since we have not initialized log file, yet, print to console only.
+PrintVersion $false
 LogMessage "Script started at:" $false
 LogMessage (Indent $startTime) $false
 
+# Load config settings from a config file (if any).
 if (!(InitConfig)) {
     LogWarning "Cannot initialize run-time configuration settings." $false
-    return
+    exit $EXITCODE_ERROR_CONFIG
 }
 
 # Get the name and path of the backup directory.
@@ -2636,20 +2651,21 @@ $BackupDirName, $BackupDirPath =
 
 if ((!$BackupDirName) -or (!$BackupDirPath)) {
     LogError "Cannot determine location of the backup folder." $false
-    return
+    exit $EXITCODE_ERROR_BACKUPDIR
 }
 
 # Initialize log file settings.
 if (!(InitLog)) {
-    return
+    exit $EXITCODE_ERROR_LOG
 }
 
-# Set the credential file name.
+# Set the credential file name (for SMTP server).
 InitCredentialFileName
 
+# Assume that SMTP server does not require authentication for now.
 $credential = $null
 
-# Get credentials from a file.
+# Get SMTP server credentials from a file.
 if (MustSendMail $SendMail $Mode) {
     if (!$Anonymous) {
         $credential = GetCredential `
@@ -2674,10 +2690,15 @@ if (!$To) {
 }
 
 # Okay, at this point we are ready to roll.
+
+# Print messages that we already sent to console to the log file.
 PrintVersion $true $false
 
 LogMessage "Script started at:" $true $false
 LogMessage (Indent $StartTime) $true $false
+
+# The rest of the log messages will be sent to console and log file
+# (subject to other checks, e.g. if log file is turned off or quiet mode).
 
 LogMessage "Operation mode:"
 LogMessage (Indent $Mode.ToUpper())
@@ -2717,6 +2738,7 @@ $success, $plexServerExePath =
         $PlexServerExePath `
         $PlexServerExeFileName
 
+# Some variables for email notification message.
 $computerName   = $env:ComputerName
 $scriptPath     = $PSCommandPath
 $subject        = $null
@@ -2731,6 +2753,7 @@ else {
     $backupMode = $Mode.ToUpper()
 }
 
+# Check if we could determine the path to the PMS EXE.
 if (!$success) {
     if (MustSendMail $SendMail $Mode $success) {
         $mailBody = FormatEmail `
@@ -2756,7 +2779,7 @@ if (!$success) {
         }
     }
 
-    return
+    exit $EXITCODE_ERROR_GETPMSEXE
 }
 
 # Get list of all running Plex services (match by display name).
@@ -2790,7 +2813,7 @@ catch {
         }
     }
 
-    return
+    exit $EXITCODE_ERROR_GETSERVICES
 }
 
 # Stop all running Plex services.
@@ -2822,7 +2845,7 @@ if (!$success) {
         }
     }
 
-    return
+    exit $EXITCODE_ERROR_STOPSERVICES
 }
 
 # Stop Plex Media Server executable (if it's still running).
@@ -2853,7 +2876,7 @@ if (!(StopPlexMediaServer $plexServerExeFileName $PlexServerExePath)) {
         }
     }
 
-    return
+    exit $EXITCODE_ERROR_STOPPMSEXE
 }
 
 # Restore Plex app data from backup.
@@ -2964,3 +2987,10 @@ if (MustSendMail $SendMail $Mode $success) {
 }
 
 LogMessage "Done."
+
+if ($sucess) {
+    exit $EXITCODE_SUCCESS
+}
+else {
+    exit $EXITCODE_ERROR
+}
