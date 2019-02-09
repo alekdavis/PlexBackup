@@ -12,7 +12,7 @@ In Task Scheduler's __Actions__ panel, click __Create Task...__. You can do this
 
 ![Task Scheduler](https://user-images.githubusercontent.com/2113681/52493659-e50aa880-2b80-11e9-84b2-f3a2fdbd7112.PNG)
 
-You can set the task properties in the new task creation wizard, or modify after creating the task (double-click the task to open its properties for editing).
+You can set the task properties in the new task creation wizard or modify after creating the task (double-click the task to open its properties for editing).
 
 When setting up the Plex backup scheduled task, please make sure that it runs:
 
