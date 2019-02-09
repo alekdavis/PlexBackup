@@ -1,6 +1,6 @@
 # Scheduled Plex backup
 
-You can set up a Plex backup job to run on a periodic schedule with the help of [Windows Task Scheduler](https://docs.microsoft.com/en-us/windows/desktop/taskschd/task-scheduler-start-page).
+You can use [Windows Task Scheduler](https://docs.microsoft.com/en-us/windows/desktop/taskschd/task-scheduler-start-page) to run the Plex backup script ([PlexBackup.ps1](PlexBackup.ps1)) on a schedule.
 
 ## Launch Windows Task Scheduler
 
