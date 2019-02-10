@@ -38,7 +38,7 @@
     "PlexServerExePath": {
         "value": null
     },
-    "RetainBackups": {
+    "Keep": {
         "value": null
     },
     "Robocopy": {
