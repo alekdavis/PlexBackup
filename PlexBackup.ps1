@@ -235,9 +235,9 @@ Indicates in which case the script must send an attachment along with th email
 notification. Values: Never (default), OnError, OnSuccess, Always.
 
 .NOTES
-Version    : 1.3.3
+Version    : 1.3.4
 Author     : Alek Davis
-Created on : 2019-02-07
+Created on : 2019-02-09
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
