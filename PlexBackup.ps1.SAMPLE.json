@@ -103,6 +103,6 @@
         "value": null
     },
     "SendLogFile": {
-        "value": true
+        "value": "Never"
     }
 }
