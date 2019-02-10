@@ -504,7 +504,7 @@ function InitConfig {
     # If config file is specified, check if it exists.
     if ($script:ConfigFile) {
 
-        if (!(Test-Path -Path $script:ConfigFile -PathType Container)) {
+        if (!(Test-Path -Path $script:ConfigFile -PathType Leaf)) {
             LogError "Config file:" $false
             LogError (Indent $script:ConfigFile) $false
             LogError "not found." $false
