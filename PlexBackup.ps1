@@ -74,7 +74,7 @@ element in the config file is set to 'Restore' then the script will run in the
 Restore mode.
 
 On success, the script will set the value of the $LASTEXITCODE variable to 0;
-on error, itr will be greater than zero.
+on error, it will be greater than zero.
 
 This script must run as an administrator.
 
