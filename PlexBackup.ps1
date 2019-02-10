@@ -2682,7 +2682,7 @@ if (!$From) {
         $From = $credential.UserName
     }
     else {
-        $SendMail = $false
+        $SendMail = "Never"
     }
 }
 if (!$To) {
