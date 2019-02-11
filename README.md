@@ -197,6 +197,8 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
     [-SaveCredential] `
     [-Anonymous] `
     [[-SendLogFile] <String>] `
+    [-NoLogo] `
+    [-Cls]
     [<CommonParameters>]
 ```
 ### Arguments
@@ -318,6 +320,14 @@ _-SendLogFile_
 
 Indicates in which case the script must send an attachment along with th email
 notification. Values: _Never_ (default), _OnError_, _OnSuccess_, _Always_.
+
+_-NoLogo_
+
+Supresses the version and copyright message normally displayed in the beginning of the script run.
+
+_-Cls_
+
+Clears the console screen in the beginning of the script run.
 
 _-&lt;CommonParameters&gt;_
     
