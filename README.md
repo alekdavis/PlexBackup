@@ -325,7 +325,7 @@ _-NoLogo_
 
 Supresses the version and copyright message normally displayed in the beginning of the script run.
 
-_-Cls_
+_-ClearScreen, -Cls_
 
 Clears the console screen in the beginning of the script run.
 
