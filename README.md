@@ -217,7 +217,7 @@ Location of the Plex Media Server application data folder (default: _%localappda
 
 _-BackupRootDir_
 
-Path to the root of the backup folder (backup will be created under a subfolder reflecting the timestamp of the backup job).
+Path to the root of the backup folder (backup will be created under a subfolder reflecting the timestamp of the backup job). If not specified, the script folder will be used.
 
 _-BackupDirPath_
 
