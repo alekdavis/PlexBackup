@@ -107,7 +107,8 @@ the script with the '.json' extension, such as 'PlexBackup.ps1.json'.
 Location of the Plex Media Server application data folder.
 
 .PARAMETER BackupRootDir
-Path to the root backup folder holding timestamped backup subfolders.
+Path to the root backup folder holding timestamped backup subfolders. If not
+specified, the script folder will be used.
 
 .PARAMETER BackupDirPath
 When running the script in the Restore mode, holds path to the backup folder
@@ -243,7 +244,7 @@ Specify this command-line switch to clear console before starting script executi
 .NOTES
 Version    : 1.3.5
 Author     : Alek Davis
-Created on : 2019-02-10
+Created on : 2019-02-11
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
