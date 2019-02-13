@@ -46,7 +46,7 @@ Monitor the output. If any errors occur, try to understand the error message and
 
 ## Advanced setup
 
-Once you verify that Plex backup is working, you can adjust the settings to better serve your needs. You can set it up to receive email notifications, have it send you a log file upon completion, run it as a [scheduled task](SCHEDULED PLEX BACKUP.md], and do more.
+Once you verify that Plex backup is working, you can adjust the settings to better serve your needs. You can set it up to receive email notifications, have it send you a log file upon completion, run it as a [scheduled task](SCHEDULED%20PLEX%20BACKUP.md), and do more.
 
 ## Restore
 
