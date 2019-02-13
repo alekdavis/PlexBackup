@@ -42,7 +42,7 @@ In the PowerShell prompt, switch to the Plex backup script folder and enter the 
 .\PlexBackup.ps1
 ```
 
-Monitor the output. If any errors occur, try to understand the error message and correct the problem. If you get stuck, submit an [issue](/alekdavis/PlexBackup/issues).
+Monitor the output. If any errors occur, try to understand the error message and correct the problem. If you get stuck, submit an [issue](../../issues).
 
 ## Advanced setup
 
