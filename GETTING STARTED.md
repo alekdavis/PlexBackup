@@ -12,7 +12,7 @@ To download the Plex backup files, either clone this repository or simply copy t
 - [PlexBackup.ps1](PlexBackup.ps1)
 - [PlexBackup.ps1.SAMPLE.json](PlexBackup.ps1.SAMPLE.json)
 
-If you chose tho copy the files manually, make sure that your procedure does not corrupt characters (it can happen with special characters, like dashes, which may be converted to non-ASKII characters during the copy operation).
+If you chose tho copy the files manually, make sure that your procedure does not corrupt characters (it can happen with special characters, like dashes, which may be converted to non-ASCII characters during the copy operation).
 
 ### Rename sample config file
 
