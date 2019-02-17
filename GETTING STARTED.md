@@ -24,7 +24,7 @@ Rename `PlexBackup.ps1.SAMPLE.json` file to `PlexBackup.ps1.json` and make sure 
 
 ### Pick backup folder
 
-By default, the script will create a backup folder in the same directory from which the script is running, and with few exceptions, it is not the best idea. In most cases, you should save backed up data on an external drive, such as a [NAS](https://en.wikipedia.org/wiki/Network-attached_storage) share or an external USB hard drive. Make sure that the backup drive has enough space.
+By default, the script will create a backup folder in the same directory from which the script is running. Make sure you are not backing up Plxx app date to the same drive where Plex keeps them (you should save backed up data on a separate local drive, if your computer has more than one, an external drive, such as a [NAS](https://en.wikipedia.org/wiki/Network-attached_storage) share, or an external USB hard drive). Make sure that the backup drive has enough space.
 
 ### Update config file settings
 
