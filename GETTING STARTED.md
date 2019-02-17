@@ -16,7 +16,7 @@ To download the Plex backup files, either clone this repository or simply copy t
 - [PlexBackup.ps1](PlexBackup.ps1)
 - [PlexBackup.ps1.SAMPLE.json](PlexBackup.ps1.SAMPLE.json)
 
-If you chose tho copy the files manually, make sure that your procedure does not corrupt characters (it can happen with special characters, like dashes, which may be converted to non-ASCII characters during the copy operation).
+If you choose to copy the files manually, make sure that your procedure does not corrupt characters (it can happen with special characters, like dashes, which may be converted to non-ASCII characters during the copy operation).
 
 ### Rename sample config file
 
@@ -24,7 +24,7 @@ Rename `PlexBackup.ps1.SAMPLE.json` file to `PlexBackup.ps1.json` and make sure 
 
 ### Pick backup folder
 
-By default, the script will create a backup folder in the same directory from which the script is running, which is probably not the best idea (if you have the script installed on a local drive). In most cases, you should back up to an external drive, such as a NAS share or an external hard drive. Make sure that the backup drive has enough space.
+By default, the script will create a backup folder in the same directory from which the script is running, and with few exceptions, it is not the best idea. In most cases, you should save backed up data on an external drive, such as a [NAS](https://en.wikipedia.org/wiki/Network-attached_storage) share or an external USB hard drive. Make sure that the backup drive has enough space.
 
 ### Update config file settings
 
