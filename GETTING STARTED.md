@@ -5,6 +5,10 @@ To start your first Plex backup, follow these steps.
 
 For minimal backup functionality, do the following:
 
+### Log in
+
+Log on to Windows under the same account your Plex Media Server runs.
+
 ### Download files
 
 To download the Plex backup files, either clone this repository or simply copy the following files:
@@ -32,7 +36,7 @@ When performing backup, we want to make sure that Plex installation is not corru
 
 ### Launch PowerShell
 
-You must launch PowerShell as administrator (the backup script performs a few operations, such as stopping and starting services, that require elevated privileges).
+Launch PowerShell as administrator (the backup script performs a few operations, such as stopping and starting services, that require elevated privileges).
 
 ### Run backup script
 
