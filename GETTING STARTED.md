@@ -24,7 +24,7 @@ Rename `PlexBackup.ps1.SAMPLE.json` file to `PlexBackup.ps1.json` and make sure 
 
 ### Pick backup folder
 
-By default, the script will create a backup folder in the same directory from which the script is running. Make sure you are not backing up Plxx app date to the same drive where Plex keeps them (you should save backed up data on a separate local drive, if your computer has more than one, an external drive, such as a [NAS](https://en.wikipedia.org/wiki/Network-attached_storage) share, or an external USB hard drive). Make sure that the backup drive has enough space.
+By default, the PlexBackup.ps1 creates a backup folder in the same directory from which the script is running. Make sure you are not backing up Plex app data to the same drive (you should save backed up data on a separate local drive, if your computer has more than one, an external drive, such as a [NAS](https://en.wikipedia.org/wiki/Network-attached_storage) share, or an external USB hard drive). Make sure that the backup drive has enough space.
 
 ### Update config file settings
 
@@ -32,11 +32,11 @@ Open the `PlexBackup.ps1.json` file in a text editor, such as _Notepad_ and make
 
 ### Make sure Plex Media Server is running
 
-When performing backup, we want to make sure that Plex installation is not corrupted (you would not want to make a backup of a non-running Plex instance, right?), so Plex Media Server must be running.
+When performing a backup, we want to make sure that Plex installation is not corrupted (you would not want to make a backup of a non-running Plex instance, right?), so Plex Media Server must be running.
 
 ### Launch PowerShell
 
-Launch PowerShell as administrator (the backup script performs a few operations, such as stopping and starting services, that require elevated privileges).
+Launch PowerShell _as administrator_ (the backup script performs a few operations, such as stopping and starting services, that require elevated privileges).
 
 ### Run backup script
 
@@ -46,7 +46,7 @@ In the PowerShell prompt, switch to the Plex backup script folder and enter the 
 .\PlexBackup.ps1
 ```
 
-If PowerShell does not allow you to launch scripts, [adjust the execution policy settings](README.md#script-execution) (you may also need to make a non-destructive change to the script to fool Windows into thinking that it is a local script, and not a script downloaded from the Internet).
+If PowerShell does not allow you to launch scripts, [adjust the execution policy settings](README.md#script-execution) (you may also need to make a non-destructive change to the script to fool Windows into thinking that it is a local script and not a script downloaded from the Internet).
 
 Once the script runs, monitor the output. If any errors occur, try to understand the error message and correct the problem. If you get stuck, submit an [issue](../../issues).
 
@@ -56,7 +56,7 @@ Once you verify that Plex backup is working, you can adjust the settings to bett
 
 ## Restore
 
-To restore Plex application data from a backup, make sure that you have a running Plex instance (e.g. a brand new Plex installation). Verify the config file (`PlexBackup.ps1.json`) settings. In a typical case, you do not need to make any changes to the config file (the script will pick up the latest backup snapshot from the backup root folder). Execute the following command:
+To restore Plex application data from a backup, make sure that you have a running Plex instance (e.g. a brand new Plex installation). Verify the config file (`PlexBackup.ps1.json`) settings (in a typical case, you do not need to make any changes to the config file since the script will pick up the latest backup snapshot from the backup root folder). Execute the following command:
 
 ```PowerShell
 .\PlexBackup.ps1 -Restore
