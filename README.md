@@ -57,7 +57,7 @@ The default value of the PlexBackup script's runtime parameters are defined in c
 ### Config file
 Config file is optional. The default config file must be named after the PlexBackup script with the `.json` extension, such as `PlexBackup.ps1.json`. If the file with this name does not exist in the backup script's folder, PlexBackup will not care. You can also specify a custom config file name (or more accurately, path) via the `ConfigFile` command-line argument ([see sample](PlexBackup.ps1.json)).
 
-A config file must use JSON formatting, such as:
+A config file must use [JSON formatting](https://www.json.org/), such as:
 
 ```JavaScript
 {
