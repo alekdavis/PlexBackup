@@ -32,7 +32,7 @@ Open the `PlexBackup.ps1.json` file in a text editor, such as _Notepad_ and make
 
 ### Make sure Plex Media Server is running
 
-When performing a backup, we want to make sure that Plex installation is not corrupted (you would not want to make a backup of a non-running Plex instance, right?), so Plex Media Server must be running.
+When performing a backup, we want to make sure that Plex installation is not corrupted (you would not want to make a backup of a non-functioning Plex instance, right?), so Plex Media Server must be running.
 
 ### Launch PowerShell
 
