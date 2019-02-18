@@ -48,7 +48,7 @@ In the PowerShell prompt, switch to the Plex backup script folder and enter the 
 
 If PowerShell does not allow you to launch scripts, [adjust the execution policy settings](README.md#script-execution) (you may also need to make a non-destructive change to the script to fool Windows into thinking that it is a local script and not a script downloaded from the Internet).
 
-Once the script runs, monitor the output. If any errors occur, try to understand the error message and correct the problem. If you get stuck, submit an [issue](../../issues).
+Once the script runs, monitor the output. If an errors occurs, try to understand the error message and correct the problem. If you get stuck, submit an [issue](../../issues).
 
 ## Advanced setup
 
