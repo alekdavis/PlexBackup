@@ -22,9 +22,9 @@ If you choose to copy the files manually, make sure that your procedure does not
 
 Rename `PlexBackup.ps1.SAMPLE.json` file to `PlexBackup.ps1.json` and make sure it's located in the same folder as `PlexBackup.ps1`.
 
-### Pick backup folder
+### Pick a backup folder
 
-By default, the PlexBackup.ps1 creates a backup folder in the same directory from which the script is running. Make sure you are not backing up Plex app data to the same drive (you should save backed up data on a separate local drive, if your computer has more than one, an external drive, such as a [NAS](https://en.wikipedia.org/wiki/Network-attached_storage) share, or an external USB hard drive). Make sure that the backup drive has enough space.
+By default, PlexBackup.ps1 creates a backup folder in the same directory from which the script is running. Make sure you are not backing up Plex app data to the same drive (you should save backed up data on a separate local drive, if your computer has more than one, an external drive, such as a [NAS](https://en.wikipedia.org/wiki/Network-attached_storage) share, or an external USB hard drive). Make sure that the backup drive has enough space.
 
 ### Update config file settings
 
