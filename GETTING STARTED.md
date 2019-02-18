@@ -59,13 +59,13 @@ Once you verify that Plex backup is working, you can adjust the settings to bett
 To restore Plex application data from a backup, make sure that you have a running Plex instance (e.g. a brand new Plex installation). Verify the config file (`PlexBackup.ps1.json`) settings (in a typical case, you do not need to make any changes to the config file since the script will pick up the latest backup snapshot from the backup root folder). Execute the following command:
 
 ```PowerShell
-.\PlexBackup.ps1 -Restore
+.\PlexBackup.ps1 -Mode Restore
 ```
 
 You may want to verify that the restore operation is successful before starting Plex Media Server, in which case, run the script with the `Shutdown` switch:
 
 ```PowerShell
-.\PlexBackup.ps1 -Restore -Shutdown
+.\PlexBackup.ps1 -Mode Restore -Shutdown
 ```
 
 Enjoy!
