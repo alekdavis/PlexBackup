@@ -99,6 +99,15 @@ https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)
 .PARAMETER Mode
 Specifies the mode of operation: Backup (default), Continue, or Restore.
 
+.PARAMETER Backup
+Shortcut for '-Mode Backup'.
+
+.PARAMETER Continue
+Shortcut for '-Mode Continue'.
+
+.PARAMETER Restore
+Shortcut for '-Mode Restore'.
+
 .PARAMETER ConfigFile
 Path to the optional custom config file. The default config file is named after
 the script with the '.json' extension, such as 'PlexBackup.ps1.json'.
@@ -242,9 +251,9 @@ Specify this command-line switch to not print version and copyright info.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.3.5
+Version    : 1.3.6
 Author     : Alek Davis
-Created on : 2019-02-11
+Created on : 2019-02-19
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -322,17 +331,28 @@ GETVERSION COMMANDS WILL NOT WORK.
 
 # Script command-line arguments (see descriptions in the .PARAMETER comments
 # above).
+[CmdletBinding(DefaultParameterSetName="ModeSet")]
 param
 (
-    [ValidateSet("Backup", "Continue", "Restore")]
+    [Parameter(ParameterSetName="ModeSet")]
+    [ValidateSet("", "Backup", "Continue", "Restore")]
     [string]
-    $Mode = "Backup",
+    $Mode = "",
+    [Parameter(ParameterSetName="BackupSet")]
+    [switch]
+    $Backup,
+    [Parameter(ParameterSetName="ContinueSet")]
+    [switch]
+    $Continue,
+    [Parameter(ParameterSetName="RestoreSet")]
+    [switch]
+    $Restore,
     [string]
     $ConfigFile = $null,
     [string]
     $PlexAppDataDir = "$env:LOCALAPPDATA\Plex Media Server",
     [string]
-    $BackupRootDir = (Split-Path -Path $PSCommandPath -Parent),
+    $BackupRootDir = $null,
     [string]
     $BackupDirPath = $null,
     [string]
@@ -396,7 +416,7 @@ param
     $NoLogo = $false,
     [Alias("Cls")]
     [switch]
-    $ClearScreen
+    $ClearScreen = $false
 )
 
 #-----------------------------[ DECLARATIONS ]-----------------------------
@@ -829,6 +849,36 @@ function LogMessage {
     if (!(Log $message $script:LogFile)) {
         $script:Log     = $false
         $script:LogFile = $null
+    }
+}
+
+function InitMode {
+    if (!$script:Mode) {
+        if ($script:Backup) {
+            $script:Mode = "Backup"
+        }
+        elseif ($script:Continue) {
+            $script:Mode = "Continue"
+        }
+        elseif ($script:Restore) {
+            $script:Mode = "Restore"
+        }
+        else {
+            $script:Mode = "Backup"
+        }
+    }
+}
+
+function InitBackupRootDir {
+    if ($script:BackupRootDir) {
+        return
+    }
+
+    if ($script:BackupDirPath) {
+        $script:BackupRootDir = Split-Path -Path $script:BackupDirPath -Parent
+    }
+    else {
+        $script:BackupRootDir = Split-Path -Path $PSCommandPath -Parent
     }
 }
 
@@ -2608,12 +2658,15 @@ if ((!$Quiet) -and (!$NoLogo)) {
 LogMessage "Script started at:" $false
 LogMessage (Indent $startTime) $false
 
-
 # Load config settings from a config file (if any).
 if (!(InitConfig)) {
     LogWarning "Cannot initialize run-time configuration settings." $false
     exit $EXITCODE_ERROR_CONFIG
 }
+
+InitMode
+InitBackupRootDir
+InitMailSetting
 
 # Get the name and path of the backup directory.
 $BackupDirName, $BackupDirPath =
