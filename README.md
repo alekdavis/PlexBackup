@@ -10,7 +10,7 @@ Plex does not offer a meaningful backup feature. Yes, it can back up a Plex data
 IMPORTANT: The script will not back up media (video, audio, images) or Plex program files. You must use different backup techniques for those. For example, you can keep your media files on a RAID 5 disk array. And you don't really need to back up Plex program files, since you can always download them. But for everything else, PlexBackup is your guy.
 
 ### Modes of operation
-PlexBackup can run in three modes (specified by the `Mode` switch):
+PlexBackup can run in three modes (specified by the `Mode` switch or a corresponding shortcut):
 
 - _Backup_: the default mode that starts a new backup job.
 - _Continue_: resumes an incomplete backup job.
@@ -168,7 +168,7 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
 ## Syntax
 ```PowerShell
 .\PlexBackup.ps1 `
-    [[-Mode] <String>] `
+    [[-Mode] <String> | -Backup | -Continue | -Restore] `
     [[-ConfigFile] <String>] `
     [[-PlexAppDataDir] <String>] `
     [[-BackupRootDir] <String>] `
@@ -205,7 +205,7 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
 
 _-Mode_
     
-Specifies the mode of operation: _Backup_ (default), _Continue_, or _Restore_.
+Specifies the mode of operation: _Backup_ (default), _Continue_, or _Restore_. Alternatively, you can specify one of the shortcut switches: _-Backup_, _-Continue_, or _-Restore_. Keep in mind that the _Mode_ parameter and the shortcut switches are mutually exclusive (i.e. you can use at most one).
 
 _-ConfigFile_
     
