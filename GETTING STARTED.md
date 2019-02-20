@@ -28,7 +28,7 @@ By default, PlexBackup.ps1 creates a backup folder in the same directory from wh
 
 ### Update config file settings
 
-Open the `PlexBackup.ps1.json` file in a text editor, such as _Notepad_ and make sure the backup settings are correct. At the very least, set the location of the backup root folder (`BackupRootDir`). Remember to escape backslash characters (`\`) in the path with another backslash character, e.g. if your backup root folder points to the `\\MYNAS\Backup` share, it must be entered as `\\\\MYNAS\\Backup`. Save the config file.
+Open the `PlexBackup.ps1.json` file in a text editor, such as _Notepad_, and make sure the backup settings are correct. At the very least, set the location of the backup root folder (`BackupRootDir`). Remember to escape backslash characters (`\`) in the path with another backslash character, e.g. if your backup root folder points to the `\\MYNAS\Backup` share, it must be entered as `\\\\MYNAS\\Backup`. Save the config file.
 
 ### Make sure Plex Media Server is running
 
@@ -59,13 +59,13 @@ Once you verify that Plex backup is working, you can adjust the settings to bett
 To restore Plex application data from a backup, make sure that you have a running Plex instance (e.g. a brand new Plex installation). Verify the config file (`PlexBackup.ps1.json`) settings (in a typical case, you do not need to make any changes to the config file since the script will pick up the latest backup snapshot from the backup root folder). Execute the following command:
 
 ```PowerShell
-.\PlexBackup.ps1 -Mode Restore
+.\PlexBackup.ps1 -Restore
 ```
 
 You may want to verify that the restore operation is successful before starting Plex Media Server, in which case, run the script with the `Shutdown` switch:
 
 ```PowerShell
-.\PlexBackup.ps1 -Mode Restore -Shutdown
+.\PlexBackup.ps1 -Restore -Shutdown
 ```
 
 Enjoy!
