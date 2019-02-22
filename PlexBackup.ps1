@@ -251,7 +251,7 @@ Specify this command-line switch to not print version and copyright info.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.3.7
+Version    : 1.3.8
 Author     : Alek Davis
 Created on : 2019-02-21
 License    : MIT License
@@ -986,12 +986,12 @@ function PrintVersion {
 
 function InitMailSetting {
     if (!$script:smtpServer) {
-        $script:SendMail = $false
+        $script:SendMail = "Never"
     }
 }
 
 function InitCredentialFileName {
-    if (!$script:SendMail) {
+    if (!$script:SendMail -or ($script:SendMail -eq "Never")) {
         return
     }
 
@@ -1276,7 +1276,9 @@ function FormatEmail {
         [DateTime]
         $scriptEndTime,
         [bool]
-        $success = $true
+        $success = $true,
+        [string]
+        $errorInfo = $null
     )
 
     $scriptDuration = (New-TimeSpan -Start $scriptStartTime -End $scriptEndTime).ToString("hh\:mm\:ss\.fff")
@@ -1306,6 +1308,8 @@ function FormatEmail {
 <tr><td style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_DURATION#</td></tr>
 <tr><td style='#STYLE_TEXT#'>The backup folder</td></tr>
 <tr><td style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_DIR#</td></tr>
+<tr><td style='#STYLE_ERROR#'>Error info</td></tr>
+<tr><td style='#STYLE_VAR_ERROR#'>#VALUE_ERROR_INFO#</td></tr>
 </td>
 </tr>
 </table>
@@ -1318,6 +1322,9 @@ function FormatEmail {
 
     $styleResultColor   = ''
     $resultText         = ''
+
+    $styleErrorInfo     = 'mso-hide: all;overflow: hidden;max-height: 0;display: none;line-height: 0;visibility: hidden;'
+    $styleVarErrorInfo  = $styleErrorInfo
 
     if ($success) {
         $styleResultColor = $styleSuccessColor
@@ -1340,11 +1347,22 @@ function FormatEmail {
     $styleVarTextFont        = $styleTextFont + 'font-weight: bold;'
     $styleResultTextFont     = $styleFontFamily + $styleResultTextFontSize + $styleResultColor + 'font-weight: bold;'
 
+    $styleText               = $styleParagraph + $styleTextFont
+    $styleVarText            = $styleVarParagraph +  $styleVarTextFont
+    $styleResult             = $styleResultParagraph + $styleResultTextFont
+
+    if ($errorInfo) {
+        $styleErrorInfo      = $styleText
+        $styleVarErrorInfo   = $styleVarText
+    }
+
     $emailTokens = @{
         STYLE_PAGE              = $stylePage
-        STYLE_TEXT              = $styleParagraph + $styleTextFont
-        STYLE_VAR_TEXT          = $styleVarParagraph +  $styleVarTextFont
-        STYLE_RESULT            = $styleResultParagraph + $styleResultTextFont
+        STYLE_TEXT              = $styleText
+        STYLE_VAR_TEXT          = $styleVarText
+        STYLE_ERROR             = $styleErrorInfo
+        STYLE_VAR_ERROR         = $styleVarErrorInfo
+        STYLE_RESULT            = $styleResult
         VALUE_COMPUTER_NAME     = $computerName
         VALUE_SCRIPT_PATH       = $scriptPath
         VALUE_BACKUP_MODE       = $backupMode
@@ -1353,6 +1371,7 @@ function FormatEmail {
         VALUE_SCRIPT_END_TIME   = $scriptEndTime
         VALUE_SCRIPT_DURATION   = $scriptDuration
         VALUE_RESULT            = $resultText
+        VALUE_ERROR_INFO        = $errorInfo
     }
 
     # $htmlEmail = Get-Content -Path TemplateLetter.txt -RAW
@@ -1381,7 +1400,7 @@ function WakeUpDir {
 
     # Just in case path points to a remote share on a sleeping device,
     # try waking it up (a directory listing should do it).
-    for ($i = 0; $i -lt 2; $i++) {
+    for ($i = 0; $i -lt 3; $i++) {
         try {
             Get-ChildItem -Path $path | Out-Null
             break
@@ -2842,7 +2861,8 @@ if (!$success) {
             $BackupDirPath `
             $startTime `
             (Get-Date) `
-            $success
+            $success `
+            "Cannot determine the path of the Plex Media Server executable file."
 
         if ($mailBody) {
             SendMail `
@@ -2876,7 +2896,8 @@ catch {
             $BackupDirPath `
             $startTime `
             (Get-Date) `
-            $success
+            $success `
+            "Cannot get the list of running Plex services."
 
         if ($mailBody) {
             SendMail `
@@ -2908,7 +2929,8 @@ if (!$success) {
             $BackupDirPath `
             $startTime `
             (Get-Date) `
-            $success
+            $success `
+            "Cannot stop Plex services."
 
         if ($mailBody) {
             SendMail `
@@ -2939,7 +2961,8 @@ if (!(StopPlexMediaServer $plexServerExeFileName $PlexServerExePath)) {
             $BackupDirPath `
             $startTime `
             (Get-Date) `
-            $success
+            $success `
+            "Cannot stop Plex Media Server."
 
         if ($mailBody) {
             SendMail `
@@ -3034,11 +3057,13 @@ else {
     $subject = $subjectError
 }
 
+$errorInfo = $null
 if ($success) {
     $subject = $subjectSuccess
 }
 else {
-    $subject = $subjectError
+    $subject   = $subjectError
+    $errorInfo = "For error details, check the log file (make sure the script runs with logging turned on)."
 }
 
 if (MustSendMail $SendMail $Mode $success) {
