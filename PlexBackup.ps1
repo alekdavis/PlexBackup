@@ -251,9 +251,9 @@ Specify this command-line switch to not print version and copyright info.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.3.6
+Version    : 1.3.7
 Author     : Alek Davis
-Created on : 2019-02-19
+Created on : 2019-02-21
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -1369,9 +1369,32 @@ function GetTimestamp {
     return $(Get-Date).ToString("yyyy/MM/dd HH:mm:ss.fff")
 }
 
+function WakeUpDir {
+    param(
+        [string]
+        $path
+    )
+
+    if (!$path) {
+        return
+    }
+
+    # Just in case path points to a remote share on a sleeping device,
+    # try waking it up (a directory listing should do it).
+    for ($i = 0; $i -lt 2; $i++) {
+        try {
+            Get-ChildItem -Path $path | Out-Null
+            break
+        }
+        catch {
+            $Error.Clear()
+            Start-Sleep -Seconds 10
+        }
+    }
+}
+
 function GetLastBackupDirPath {
-    param
-    (
+    param (
         [string]
         $backupRootDir,
         [string]
@@ -1383,6 +1406,8 @@ function GetLastBackupDirPath {
     if ($Script:LogFile) {
         $logToFile = $true
     }
+
+    WakeUpDir $backupRootDir
 
     if (!(Test-Path -Path $backupRootDir -PathType Container)) {
         LogWarning "Cannot find backup root folder:" $logToFile
@@ -1442,9 +1467,12 @@ function GetBackupDirNameAndPath {
     )
 
     if ($backupDirPath) {
+        WakeUpDir $backupDirPath
+
         return (Split-Path -Path $backupDirPath -Leaf), $backupDirPath
     }
 
+    WakeUpDir $backupRootDir
     if ($mode -ne "Backup") {
         $backupDirPath = GetLastBackupDirPath $backupRootDir $regexBackupDirNameFormat
     }
@@ -2284,6 +2312,8 @@ function RestorePlexFromBackup {
         $retryWaitSec
     )
     # Make sure the backup root folder exists.
+    WakeUpDir $backupRootDir
+
     if (!(Test-Path $backupRootDir -PathType Container)) {
         LogError "Cannot find backup root folder:"
         LogError (Indent $backupDirPath)
@@ -2305,6 +2335,8 @@ function RestorePlexFromBackup {
             return $false
         }
     }
+
+    WakeUpDir $backupDirPath
 
     # Make sure the backup folder exists.
     if (!(Test-Path $backupDirPath -PathType Container)) {
@@ -2427,6 +2459,8 @@ function CreatePlexBackup {
         [int]
         $retryWaitSec
     )
+
+    WakeUpDir $backupRootDir
 
     # Make sure that the backup parent folder exists.
     if (!(Test-Path $backupRootDir -PathType Container)) {
@@ -2668,6 +2702,8 @@ InitMode
 InitBackupRootDir
 InitMailSetting
 
+WakeUpDir $BackupRootDir
+
 # Get the name and path of the backup directory.
 $BackupDirName, $BackupDirPath =
     GetBackupDirNameAndPath `
@@ -2785,8 +2821,8 @@ $success, $plexServerExePath =
 $computerName   = $env:ComputerName
 $scriptPath     = $PSCommandPath
 $subject        = $null
-$subjectError   = "Plex backup failed"
-$subjectSuccess = "Plex backup completed"
+$subjectError   = "Plex backup failed :-("
+$subjectSuccess = "Plex backup completed :-)"
 $backupMode     = $null
 
 if ($Robocopy) {
@@ -3016,6 +3052,13 @@ if (MustSendMail $SendMail $Mode $success) {
         $success
 
     if ($mailBody) {
+
+        if ($LogFile -and (Test-Path -Path $LogFile -PathType Leaf)) {
+            if (!(MustSendAttachment $SendLogFile $success)) {
+                $attachment = $null
+            }
+        }
+
         SendMail `
             $From `
             $To `
