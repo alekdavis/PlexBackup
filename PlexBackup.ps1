@@ -6,10 +6,11 @@ Backs up or restores Plex application data files and registry keys on a
 Windows system.
 
 .DESCRIPTION
-The script can run in three modes:
+The script can run in four modes:
 
 - Backup (initiates a new backup),
-- Continue (continues a previous backup), and
+- Continue (continues a previous backup),
+- Update (incrementally updates a previous backup), and
 - Restore (restores Plex app data from a backup).
 
 The script backs up the contents of the 'Plex Media Server' folder (app
@@ -97,13 +98,16 @@ See also 'Running Scripts' at Microsoft TechNet Library:
 https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)
 
 .PARAMETER Mode
-Specifies the mode of operation: Backup (default), Continue, or Restore.
+Specifies the mode of operation: Backup (default), Continue, Update, or Restore.
 
 .PARAMETER Backup
 Shortcut for '-Mode Backup'.
 
 .PARAMETER Continue
 Shortcut for '-Mode Continue'.
+
+.PARAMETER Update
+Shortcut for '-Mode Update'.
 
 .PARAMETER Restore
 Shortcut for '-Mode Restore'.
@@ -251,9 +255,9 @@ Specify this command-line switch to not print version and copyright info.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.3.8
+Version    : 1.4.0
 Author     : Alek Davis
-Created on : 2019-02-21
+Created on : 2019-02-25
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -282,15 +286,19 @@ Backs up Plex application data to the specified backup location on a
 network share.
 
 .EXAMPLE
-PlexBackup.ps1 -Mode Continue
-Continues the last backup process where it left off.
+PlexBackup.ps1 -Continue
+Continues a previous backup process from where it left off.
 
 .EXAMPLE
-PlexBackup.ps1 -Mode Restore
+PlexBackup.ps1 -Update
+Performs incremental update of a previous backup.
+
+.EXAMPLE
+PlexBackup.ps1 -Restore
 Restores Plex application data from the latest backup in the default folder.
 
 .EXAMPLE
-PlexBackup.ps1 -Mode Restore -Robocopy
+PlexBackup.ps1 -Restore -Robocopy
 Restores Plex application data from the latest backup in the default folder
 created using the Robocopy command.
 
@@ -332,10 +340,9 @@ GETVERSION COMMANDS WILL NOT WORK.
 # Script command-line arguments (see descriptions in the .PARAMETER comments
 # above).
 [CmdletBinding(DefaultParameterSetName="ModeSet")]
-param
-(
+param (
     [Parameter(ParameterSetName="ModeSet")]
-    [ValidateSet("", "Backup", "Continue", "Restore")]
+    [ValidateSet("", "Backup", "Continue", "Update", "Restore")]
     [string]
     $Mode = "",
     [Parameter(ParameterSetName="BackupSet")]
@@ -344,6 +351,9 @@ param
     [Parameter(ParameterSetName="ContinueSet")]
     [switch]
     $Continue,
+    [Parameter(ParameterSetName="UpdateSet")]
+    [switch]
+    $Update,
     [Parameter(ParameterSetName="RestoreSet")]
     [switch]
     $Restore,
@@ -589,8 +599,7 @@ function InitConfig {
 }
 
 function ConvertJsonStringToObject {
-    param
-    (
+    param (
         [string]
         $json
     )
@@ -644,8 +653,7 @@ function ConvertJsonStringToObject {
 }
 
 function Indent {
-    param
-    (
+    param (
         [string]
         $message,
         [int]
@@ -669,8 +677,7 @@ function Indent {
 }
 
 function Log {
-    param
-    (
+    param (
         [string]
         $message = "",
         [string]
@@ -711,8 +718,7 @@ function Log {
 }
 
 function LogException {
-    param
-    (
+    param (
         [object]
         $ex,
         [bool]
@@ -765,8 +771,7 @@ function LogException {
 }
 
 function LogError {
-    param
-    (
+    param (
         [string]
         $message = "",
         [bool]
@@ -798,8 +803,7 @@ function LogError {
 }
 
 function LogWarning {
-    param
-    (
+    param (
         [string]
         $message = "",
         [bool]
@@ -826,8 +830,7 @@ function LogWarning {
 }
 
 function LogMessage {
-    param
-    (
+    param (
         [string]
         $message = "",
         [bool]
@@ -859,6 +862,9 @@ function InitMode {
         }
         elseif ($script:Continue) {
             $script:Mode = "Continue"
+        }
+        elseif ($script:Update) {
+            $script:Mode = "Update"
         }
         elseif ($script:Restore) {
             $script:Mode = "Restore"
@@ -1306,7 +1312,7 @@ function FormatEmail {
 <tr><td style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_END_TIME#</td></tr>
 <tr><td style='#STYLE_TEXT#'>running for (hr:min:sec.msec)</td></tr>
 <tr><td style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_DURATION#</td></tr>
-<tr><td style='#STYLE_TEXT#'>The backup folder</td></tr>
+<tr><td style='#STYLE_TEXT#'>The backup folder is at</td></tr>
 <tr><td style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_DIR#</td></tr>
 <tr><td style='#STYLE_ERROR#'>Error info</td></tr>
 <tr><td style='#STYLE_VAR_ERROR#'>#VALUE_ERROR_INFO#</td></tr>
@@ -1389,7 +1395,7 @@ function GetTimestamp {
 }
 
 function WakeUpDir {
-    param(
+    param (
         [string]
         $path
     )
@@ -1453,8 +1459,7 @@ function GetLastBackupDirPath {
 }
 
 function GetNewBackupDirName {
-    param
-    (
+    param (
         [string]
         $backupDirNameFormat,
         [DateTime]
@@ -1469,8 +1474,7 @@ function GetNewBackupDirName {
 }
 
 function GetBackupDirNameAndPath {
-    param
-    (
+    param (
         [string]
         $mode,
         [string]
@@ -1513,8 +1517,7 @@ function GetBackupDirNameAndPath {
 }
 
 function GetPlexMediaServerExePath {
-    param
-    (
+    param (
         [string]
         $path,
         [string]
@@ -1548,8 +1551,7 @@ function GetPlexMediaServerExePath {
 }
 
 function GetRunningPlexServices {
-    param
-    (
+    param (
         [string]
         $displayNameSearchString
     )
@@ -1560,8 +1562,7 @@ function GetRunningPlexServices {
 }
 
 function StopPlexServices {
-    param
-    (
+    param (
         [object[]]
         $services
     )
@@ -1593,8 +1594,7 @@ function StopPlexServices {
 }
 
 function StartPlexServices {
-    param
-    (
+    param (
         [object[]]
         $services
     )
@@ -1624,8 +1624,7 @@ function StartPlexServices {
 }
 
 function StopPlexMediaServer {
-    param
-    (
+    param (
         [string]
         $plexServerExeFileName,
         [string]
@@ -1666,8 +1665,7 @@ function StopPlexMediaServer {
 }
 
 function StartPlexMediaServer {
-    param
-    (
+    param (
         [string]
         $plexServerExeFileName,
         [string]
@@ -1696,8 +1694,7 @@ function StartPlexMediaServer {
 }
 
 function CopyFolder {
-    param
-    (
+    param (
         [string]
         $source,
         [string]
@@ -1744,8 +1741,7 @@ function CopyFolder {
 }
 
 function MoveFolder {
-    param
-    (
+    param (
         [string]
         $source,
         [string]
@@ -1792,8 +1788,7 @@ function MoveFolder {
 }
 
 function BackupSpecialSubDirs {
-    param
-    (
+    param (
         [string[]]
         $specialPlexAppDataSubDirs,
         [string]
@@ -1822,8 +1817,7 @@ function BackupSpecialSubDirs {
 }
 
 function RestoreSpecialSubDirs {
-    param
-    (
+    param (
         [string[]]
         $specialPlexAppDataSubDirs,
         [string]
@@ -1852,8 +1846,7 @@ function RestoreSpecialSubDirs {
 }
 
 function DecompressPlexAppDataFolder {
-    param
-    (
+    param (
         [object]
         $backupZipFile,
         [string]
@@ -1957,8 +1950,7 @@ function DecompressPlexAppDataFolder {
 }
 
 function DecompressPlexAppData {
-    param
-    (
+    param (
         [string]
         $plexAppDataDir,
         [string]
@@ -2023,8 +2015,9 @@ function DecompressPlexAppData {
 }
 
 function CompressPlexAppDataFolder {
-    param
-    (
+    param (
+        [string]
+        $mode,
         [object]
         $sourceDir,
         [string]
@@ -2038,7 +2031,7 @@ function CompressPlexAppDataFolder {
     $backupZipFileName = $sourceDir.Name + $zipFileExt
     $backupZipFilePath = Join-Path $backupDirPath $backupZipFileName
 
-    if (Test-Path $backupZipFilePath -PathType Leaf) {
+    if ((Test-Path $backupZipFilePath -PathType Leaf) -and ($mode -ne "Update")) {
         LogWarning "Backup archive already exists in:"
         LogWarning (Indent $backupZipFilePath)
         LogWarning "Skipping."
@@ -2046,7 +2039,7 @@ function CompressPlexAppDataFolder {
         return $true
     }
 
-    if ($tempZipFileDir) {
+    if ($tempZipFileDir -and ($mode -ne "Update")) {
         $tempZipFileName= (New-Guid).Guid + $zipFileExt
 
         $tempZipFilePath= Join-Path $tempZipFileDir $tempZipFileName
@@ -2118,7 +2111,12 @@ function CompressPlexAppDataFolder {
         LogMessage "at:"
         LogMessage (Indent (GetTimestamp))
 
-        Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $backupZipFilePath
+        if ($mode -eq "Update") {
+            Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $backupZipFilePath -Update
+        }
+        else {
+            Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $backupZipFilePath
+        }
 
         if ($Error.Count -gt 0) {
             return $false
@@ -2138,8 +2136,7 @@ function CompressPlexAppDataFolder {
 }
 
 function RobocopyPlexAppData {
-    param
-    (
+    param (
         [string]
         $source,
         [string]
@@ -2210,8 +2207,9 @@ function RobocopyPlexAppData {
 }
 
 function CompressPlexAppData {
-    param
-    (
+    param (
+        [string]
+        $mode,
         [string]
         $plexAppDataDir,
         [string[]]
@@ -2242,14 +2240,15 @@ function CompressPlexAppData {
     LogMessage "at:"
     LogMessage (Indent (GetTimestamp))
 
-    if (Test-Path $zipFilePath -PathType Leaf) {
+    # Skip if ZIP file already exists, unless it's an incremental update.
+    if ((Test-Path $zipFilePath -PathType Leaf) -and ($mode -ne "Update")) {
         LogWarning "Backup file already exists in:"
         LogWarning (Indent $zipFilePath)
         LogWarning "Skipping."
     }
     else {
         try {
-            Get-ChildItem -File "$plexAppDataDir" |
+            Get-ChildItem -File $plexAppDataDir |
                 Compress-Archive -DestinationPath $zipFilePath -Update
         }
         catch {
@@ -2277,6 +2276,7 @@ function CompressPlexAppData {
 
     foreach ($plexAppDataSubDir in $plexAppDataSubDirs) {
         if (!(CompressPlexAppDataFolder `
+                $mode `
                 $plexAppDataSubDir `
                 (Join-Path $backupDirPath $subDirFolders) `
                 $tempZipFileDir `
@@ -2289,8 +2289,7 @@ function CompressPlexAppData {
 }
 
 function RestorePlexFromBackup {
-    param
-    (
+    param (
         [string]
         $plexAppDataDir,
         [string]
@@ -2431,8 +2430,7 @@ function RestorePlexFromBackup {
 }
 
 function CreatePlexBackup {
-    param
-    (
+    param (
         [string]
         $mode,
         [string]
@@ -2511,7 +2509,7 @@ function CreatePlexBackup {
     }
 
     # Build backup folder path.
-    LogMessage "New backup will be created in:"
+    LogMessage "Backup will be saved in:"
     LogMessage (Indent $backupDirPath)
 
     # Delete old backup folders.
@@ -2563,20 +2561,22 @@ function CreatePlexBackup {
     }
 
     # Verify that temp folder exists (if specified).
-    if ($tempZipFileDir) {
-        # Make sure temp folder exists.
-        if (!(Test-Path -Path $tempZipFileDir -PathType Container)) {
-            try {
-                # Create temp folder.
-                New-Item -Path $tempZipFileDir -ItemType Directory -Force | Out-Null
-            }
-            catch {
-                LogException $_
+    if ($mode -ne "Continue") {
+        if ($tempZipFileDir) {
+            # Make sure temp folder exists.
+            if (!(Test-Path -Path $tempZipFileDir -PathType Container)) {
+                try {
+                    # Create temp folder.
+                    New-Item -Path $tempZipFileDir -ItemType Directory -Force | Out-Null
+                }
+                catch {
+                    LogException $_
 
-                LogError "Cannot find or create a temp archive folder:"
-                LogError (Indent $tempZipFileDir)
+                    LogError "Cannot find or create a temp archive folder:"
+                    LogError (Indent $tempZipFileDir)
 
-                return $false
+                    return $false
+                }
             }
         }
     }
@@ -2635,6 +2635,7 @@ function CreatePlexBackup {
 
         # Compress and archive Plex app data.
         if (!(CompressPlexAppData `
+                $mode `
                 $plexAppDataDir `
                 $excludePlexAppDataDirs `
                 $backupDirPath `
