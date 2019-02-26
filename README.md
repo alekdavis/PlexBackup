@@ -14,7 +14,7 @@ PlexBackup can run in four modes (specified by the `Mode` switch or a correspond
 
 - _Backup_: the default mode that starts a new backup job.
 - _Continue_: resumes an incomplete backup job.
-- _Update_: performs a differential backup.
+- _Update_: experimental feature to performs a differential backup (may not work faster than standard backup or at all).
 - _Restore_: restores Plex application data from a backup.
 
 If a previous backup does not exist, the _Continue_ and the _Update_ modes will behave just like the _Backup_ mode. In the _Robocopy_ mode described below, the _Continue_ and the _Update_ modes work identically.
