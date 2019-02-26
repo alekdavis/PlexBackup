@@ -10,11 +10,14 @@ Plex does not offer a meaningful backup feature. Yes, it can back up a Plex data
 IMPORTANT: The script will not back up media (video, audio, images) or Plex program files. You must use different backup techniques for those. For example, you can keep your media files on a RAID 5 disk array. And you don't really need to back up Plex program files, since you can always download them. But for everything else, PlexBackup is your guy.
 
 ### Modes of operation
-PlexBackup can run in three modes (specified by the `Mode` switch or a corresponding shortcut):
+PlexBackup can run in four modes (specified by the `Mode` switch or a corresponding shortcut):
 
 - _Backup_: the default mode that starts a new backup job.
 - _Continue_: resumes an incomplete backup job.
+- _Update_: performs a differential backup.
 - _Restore_: restores Plex application data from a backup.
+
+If a previous backup does not exist, the _Continue_ and the _Update_ modes will behave just like the _Backup_ mode. In the _Robocopy_ mode described below, the _Continue_ and the _Update_ modes work identically.
 
 In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. After the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process.
 
@@ -168,7 +171,7 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
 ## Syntax
 ```PowerShell
 .\PlexBackup.ps1 `
-    [[-Mode] <String> | -Backup | -Continue | -Restore] `
+    [[-Mode] <String> | -Backup | -Continue | -Update | -Restore] `
     [[-ConfigFile] <String>] `
     [[-PlexAppDataDir] <String>] `
     [[-BackupRootDir] <String>] `
@@ -205,7 +208,7 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
 
 _-Mode_
     
-Specifies the mode of operation: _Backup_ (default), _Continue_, or _Restore_. Alternatively, you can specify one of the shortcut switches: _-Backup_, _-Continue_, or _-Restore_. Keep in mind that the _Mode_ parameter and the shortcut switches are mutually exclusive (i.e. you can use at most one).
+Specifies the mode of operation: _Backup_ (default), _Continue_, or _Restore_. Alternatively, you can specify one of the shortcut switches: _-Backup_, _-Continue_, _-Update_, or _-Restore_. Keep in mind that the _Mode_ parameter and the shortcut switches are mutually exclusive (i.e. you can use at most one).
 
 _-ConfigFile_
     
@@ -383,15 +386,21 @@ Backs up Plex application data to the specified backup location on a network sha
 
 ### Example
 ```PowerShell
-PlexBackup.ps1 -Mode "Continue"
+PlexBackup.ps1 -Continue
 ```
 Continues the last backup process (using file and folder compression) where it left off.
 
 ### Example
 ```PowerShell
-PlexBackup.ps1 -Mode "Continue" -Robocopy
+PlexBackup.ps1 -Continue -Robocopy
 ```
 Reruns the last backup process using a mirror copy.
+
+### Example
+```PowerShell
+PlexBackup.ps1 -Updates
+```
+Applies an incremental update to the last backup.
 
 ### Example
 ```PowerShell
