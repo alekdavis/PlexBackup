@@ -2111,11 +2111,18 @@ function CompressPlexAppDataFolder {
         LogMessage "at:"
         LogMessage (Indent (GetTimestamp))
 
-        if ($mode -eq "Update") {
-            Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $backupZipFilePath -Update
+        try {
+            if ($mode -eq "Update") {
+                Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $backupZipFilePath -Update
+            }
+            else {
+                Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $backupZipFilePath
+            }
         }
-        else {
-            Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $backupZipFilePath
+        catch {
+            LogException $_
+
+            return $false
         }
 
         if ($Error.Count -gt 0) {
