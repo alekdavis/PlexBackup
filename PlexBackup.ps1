@@ -633,7 +633,7 @@ function ConvertJsonStringToObject {
                 }
                 # otherwise, check if there is a non-null/non-empty/true value.
                 else {
-                    # Only include values that ar resolved as true.
+                    # Only include values that are resolved as true.
                     if ($_.Value.value) {
                         $hash.Add(($_.Name), $_.Value.value)
                     }
@@ -642,7 +642,7 @@ function ConvertJsonStringToObject {
         }
         # For version, prior to 1.0...
         else {
-            # Only include values that ar resolved as true.
+            # Only include values that are resolved as true.
             if ($_.Value) {
                 $hash.Add(($_.Name), $_.Value)
             }
