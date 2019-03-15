@@ -16,7 +16,7 @@ PlexBackup can run in three modes (specified by the `Mode` switch or a correspon
 - `Continue`: resumes an incomplete backup job.
 - `Restore`: restores Plex application data from a backup.
 
-If a previous backup does not exist, the `Continue` mode will behave just like the `Backup` mode. In the `Robocopy` mode (described below), the `Continue` and the `Backup` modes work identically.
+If a previous backup does not exist, the `Continue` mode will behave just like the `Backup` mode. When running in the `Continue` mode, the script will skip the folders from which the archived files got created. In the `Robocopy` mode (described below), the `Continue` essentially works as a standard backup (only it will update an already existing backup folder).
 
 In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. After the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process.
 
@@ -30,7 +30,7 @@ By default, the script compresses every essential folder under the root of the P
 Instead of default compression, you can use the [7-zip](https://www.7-zip.org/) command-line tool `7z.exe`), which works faster (for both compression and extraction) and produces smaller compressed files. To use 7-zip encryption, [install 7-zip](https://www.7-zip.org/download.html), and set the PlexBackup script's `Type` parameter to `7zip` (i.e. `-Type 7zip`) or use the `-SevenZip` shortcut (on command line). If you install 7-zip in a non-default directory, use the `ArchiverPath` parameter to set path to the `7z.exe` file.
 
 #### Robocopy
-If you run PlexBackup with the `Robocopy` switch, instead of archiving, the script will create a mirror of the Plex application data folder (minus the non-essential folders) using the Robocopy command. 
+If you run PlexBackup with the `Robocopy` switch, instead of archiving, the script will create a mirror of the Plex application data folder (minus the non-essential folders) using the [Robocopy](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy) command (with the `/MIR` swtch). 
 
 You may want to play with either option to see which one works better for you.
 
