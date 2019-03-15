@@ -10,7 +10,6 @@ The script can run in four modes:
 
 - Backup (initiates a new backup),
 - Continue (continues a previous backup),
-- Update (incrementally updates a previous backup), and
 - Restore (restores Plex app data from a backup).
 
 The script backs up the contents of the 'Plex Media Server' folder (app
@@ -98,7 +97,7 @@ See also 'Running Scripts' at Microsoft TechNet Library:
 https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)
 
 .PARAMETER Mode
-Specifies the mode of operation: Backup (default), Continue, Update, or Restore.
+Specifies the mode of operation: Backup (default), Continue, or Restore.
 
 .PARAMETER Backup
 Shortcut for '-Mode Backup'.
@@ -106,11 +105,17 @@ Shortcut for '-Mode Backup'.
 .PARAMETER Continue
 Shortcut for '-Mode Continue'.
 
-.PARAMETER Update
-Shortcut for '-Mode Update'.
-
 .PARAMETER Restore
 Shortcut for '-Mode Restore'.
+
+.PARAMETER Type
+Specifies the non-default type of backup method: 7zip or Robocopy.
+
+.PARAMETER SevenZip
+Shortcut for '-Type 7zip'
+
+.PARAMETER Robocopy
+Shortcut for '-Type Robocopy'.
 
 .PARAMETER ConfigFile
 Path to the optional custom config file. The default config file is named after
@@ -139,9 +144,6 @@ Number of old backups to keep:
   2 - latest and one before it,
   3 - latest and two before it,
 and so on.
-
-.PARAMETER Robocopy
-Set this switch to use Robocopy instead of file and folder compression.
 
 .PARAMETER Retries
 The number of retries on failed copy operations (corresponds to the Robocopy
@@ -251,13 +253,18 @@ notification. Values: Never (default), OnError, OnSuccess, Always.
 .PARAMETER NoLogo
 Specify this command-line switch to not print version and copyright info.
 
+.PARAMETER ArchiverPath
+Defines the path to the 7-zip command line tool (7z.exe) which is required
+when running the script with the '-Type 7zip' or '-SevenZip' switch. Default:
+$env:ProgramFiles\7-Zip\7z.exe.
+
 .PARAMETER ClearScreen
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.4.0
+Version    : 1.5.0
 Author     : Alek Davis
-Created on : 2019-02-25
+Created on : 2019-03-15
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -281,6 +288,12 @@ Backs up Plex application data to the default backup location using
 the Robocopy command instead of the file and folder compression.
 
 .EXAMPLE
+PlexBackup.ps1 -SevenZip
+Backs up Plex application data to the default backup location using
+the 7-zip command-line tool (7z.exe). 7-zip command-line tool must
+be installed and the script must know its path.
+
+.EXAMPLE
 PlexBackup.ps1 -BackupRootDir "\\MYNAS\Backup\Plex"
 Backs up Plex application data to the specified backup location on a
 network share.
@@ -288,10 +301,6 @@ network share.
 .EXAMPLE
 PlexBackup.ps1 -Continue
 Continues a previous backup process from where it left off.
-
-.EXAMPLE
-PlexBackup.ps1 -Update
-Performs incremental update of a previous backup.
 
 .EXAMPLE
 PlexBackup.ps1 -Restore
@@ -339,94 +348,161 @@ GETVERSION COMMANDS WILL NOT WORK.
 
 # Script command-line arguments (see descriptions in the .PARAMETER comments
 # above).
-[CmdletBinding(DefaultParameterSetName="ModeSet")]
+[CmdletBinding(DefaultParameterSetName="default")]
 param (
-    [Parameter(ParameterSetName="ModeSet")]
-    [ValidateSet("", "Backup", "Continue", "Update", "Restore")]
+    [Parameter(ParameterSetName="Mode")]
+    [Parameter(Mandatory, ParameterSetName="ModeType")]
+    [Parameter(Mandatory, ParameterSetName="ModeSevenZip")]
+    [Parameter(Mandatory, ParameterSetName="ModeRobocopy")]
+    [ValidateSet("", "Backup", "Continue", "Restore")]
     [string]
     $Mode = "",
-    [Parameter(ParameterSetName="BackupSet")]
+
+    [Parameter(ParameterSetName="Backup")]
+    [Parameter(Mandatory, ParameterSetName="BackupType")]
+    [Parameter(Mandatory, ParameterSetName="BackupSevenZip")]
+    [Parameter(Mandatory, ParameterSetName="BackupRobocopy")]
     [switch]
     $Backup,
-    [Parameter(ParameterSetName="ContinueSet")]
+
+    [Parameter(ParameterSetName="Continue")]
+    [Parameter(Mandatory, ParameterSetName="ContinueType")]
+    [Parameter(Mandatory, ParameterSetName="ContinueSevenZip")]
+    [Parameter(Mandatory, ParameterSetName="ContinueRobocopy")]
     [switch]
     $Continue,
-    [Parameter(ParameterSetName="UpdateSet")]
-    [switch]
-    $Update,
-    [Parameter(ParameterSetName="RestoreSet")]
+
+    [Parameter(ParameterSetName="Restore")]
+    [Parameter(Mandatory, ParameterSetName="RestoreType")]
+    [Parameter(Mandatory, ParameterSetName="RestoreSevenZip")]
+    [Parameter(Mandatory, ParameterSetName="RestoreRobocopy")]
     [switch]
     $Restore,
+
+    [Parameter(ParameterSetName="Type")]
+    [Parameter(Mandatory, ParameterSetName="ModeType")]
+    [Parameter(Mandatory, ParameterSetName="BackupType")]
+    [Parameter(Mandatory, ParameterSetName="ContinueType")]
+    [Parameter(Mandatory, ParameterSetName="RestoreType")]
+    [ValidateSet("", "7zip", "Robocopy")]
+    [string]
+    $Type = "",
+
+    [Parameter(ParameterSetName="SevenZip")]
+    [Parameter(Mandatory, ParameterSetName="ModeSevenZip")]
+    [Parameter(Mandatory, ParameterSetName="BackupSevenZip")]
+    [Parameter(Mandatory, ParameterSetName="ContinueSevenZip")]
+    [Parameter(Mandatory, ParameterSetName="RestoreSevenZip")]
+    [switch]
+    $SevenZip,
+
+    [Parameter(ParameterSetName="Robocopy")]
+    [Parameter(Mandatory, ParameterSetName="ModeRobocopy")]
+    [Parameter(Mandatory, ParameterSetName="BackupRobocopy")]
+    [Parameter(Mandatory, ParameterSetName="ContinueRobocopy")]
+    [Parameter(Mandatory, ParameterSetName="RestoreRobocopy")]
+    [switch]
+    $Robocopy,
+
     [string]
     $ConfigFile = $null,
+
     [string]
     $PlexAppDataDir = "$env:LOCALAPPDATA\Plex Media Server",
+
     [string]
     $BackupRootDir = $null,
+
     [string]
     $BackupDirPath = $null,
+
     [string]
     $TempZipFileDir = $env:TEMP,
+
     [int]
     $Keep = 3,
-    [switch]
-    $Robocopy = $false,
+
     [int]
     $Retries = 5,
+
     [int]
     $RetryWaitSec = 10,
+
     [Alias("L")]
     [switch]
     $Log = $false,
+
     [switch]
-    $LogAppend = $false,
+    $LogAppend,
+
     [string]
     $LogFile,
+
     [switch]
-    $ErrorLog = $false,
+    $ErrorLog,
+
     [switch]
-    $ErrorLogAppend = $false,
+    $ErrorLogAppend,
+
     [string]
     $ErrorLogFile,
+
     [Alias("Q")]
     [switch]
-    $Quiet = $false,
+    $Quiet,
+
     [switch]
-    $Shutdown = $false,
+    $Shutdown,
+
     [ValidateSet(
         "Never", "Always", "OnError", "OnSuccess",
         "OnBackup", "OnBackupError", "OnBackupSuccess",
         "OnRestore", "OnRestoreError", "OnRestoreSuccess")]
     [string]
     $SendMail = "Never",
+
     [string]
     $From = $null,
+
     [string]
     $To,
+
     [string]
     $SmtpServer,
+
     [int]
     $Port = 0,
+
     [switch]
-    $UseSsl = $false,
+    $UseSsl,
+
     [string]
-    $CredentialFile = "",
+    $CredentialFile = $null,
+
     [Alias("Prompt")]
     [switch]
-    $PromptForCredential = $false,
+    $PromptForCredential,
+
     [switch]
     [Alias("Save")]
-    $SaveCredential = $false,
+    $SaveCredential,
+
     [switch]
-    $Anonymous = $false,
+    $Anonymous,
+
     [ValidateSet("Never", "OnError", "OnSuccess", "Always")]
     [string]
     $SendLogFile = "Never",
+
     [switch]
-    $NoLogo = $false,
+    $NoLogo,
+
+    [string]
+    $ArchiverPath = "$env:ProgramFiles\7-Zip\7z.exe",
+
     [Alias("Cls")]
     [switch]
-    $ClearScreen = $false
+    $ClearScreen
 )
 
 #-----------------------------[ DECLARATIONS ]-----------------------------
@@ -468,6 +544,7 @@ $BackupFileName = "Plex"
 
 # File extensions.
 $ZipFileExt = ".zip"
+$7ZipFileExt= ".7z"
 $RegFileExt = ".reg"
 
 # Subfolders that cannot be archived because the path may be too long.
@@ -492,6 +569,7 @@ $EXITCODE_ERROR_GETPMSEXE    = 5 # cannot determine path to PMS executable
 $EXITCODE_ERROR_GETSERVICES  = 6 # cannot read Plex Windows services
 $EXITCODE_ERROR_STOPSERVICES = 7 # cannot stop Plex Windows services
 $EXITCODE_ERROR_STOPPMSEXE   = 8 # cannot stop PMS executable file
+$EXITCODE_ERROR_ARCHIVERPATH = 9 # archiver path undefined or file missing
 
 #------------------------------[ FUNCTIONS ]-------------------------------
 
@@ -633,7 +711,7 @@ function ConvertJsonStringToObject {
                 }
                 # otherwise, check if there is a non-null/non-empty/true value.
                 else {
-                    # Only include values that are resolved as true.
+                    # Only include values that ar resolved as true.
                     if ($_.Value.value) {
                         $hash.Add(($_.Name), $_.Value.value)
                     }
@@ -642,7 +720,7 @@ function ConvertJsonStringToObject {
         }
         # For version, prior to 1.0...
         else {
-            # Only include values that are resolved as true.
+            # Only include values that ar resolved as true.
             if ($_.Value) {
                 $hash.Add(($_.Name), $_.Value)
             }
@@ -863,15 +941,27 @@ function InitMode {
         elseif ($script:Continue) {
             $script:Mode = "Continue"
         }
-        elseif ($script:Update) {
-            $script:Mode = "Update"
-        }
         elseif ($script:Restore) {
             $script:Mode = "Restore"
         }
         else {
             $script:Mode = "Backup"
         }
+    }
+}
+
+function InitType {
+    if (!$script:Type) {
+        if ($script:Robocopy) {
+            $script:Type = "Robocopy"
+        }
+        elseif ($script:SevenZip) {
+            $script:Type = "7zip"
+        }
+    }
+
+    if ($script:Type -eq "7zip") {
+        $script:ZipFileExt = $script:7ZipFileExt
     }
 }
 
@@ -1847,6 +1937,8 @@ function RestoreSpecialSubDirs {
 
 function DecompressPlexAppDataFolder {
     param (
+        [string]
+        $type,
         [object]
         $backupZipFile,
         [string]
@@ -1856,7 +1948,9 @@ function DecompressPlexAppDataFolder {
         [string]
         $tempZipFileDir,
         [string]
-        $zipFileExt
+        $zipFileExt,
+        [string]
+        $archiverPath
     )
     $backupZipFilePath = $backupZipFile.FullName
 
@@ -1899,7 +1993,16 @@ function DecompressPlexAppDataFolder {
         LogMessage (Indent (GetTimestamp))
 
         try {
-            Expand-Archive -Path $tempZipFilePath -DestinationPath $plexAppDataDirPath -Force
+            if ($type -eq "7zip") {
+                & $archiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" "-aoa"
+
+                if ($LASTEXITCODE -gt 0) {
+                    throw ("7-zip returned: " + $LASTEXITCODE)
+                }
+            }
+            else {
+                Expand-Archive -Path $tempZipFilePath -DestinationPath $plexAppDataDirPath -Force
+            }
         }
         catch {
             LogException $_
@@ -1934,7 +2037,16 @@ function DecompressPlexAppDataFolder {
         LogMessage (Indent (GetTimestamp))
 
         try {
-            Expand-Archive -Path $backupZipFilePath -DestinationPath $plexAppDataDirPath -Force
+            if ($type -eq "7zip") {
+                & $archiverPath "x" "$backupZipFilePath" "-o$plexAppDataDirPath" "-aoa"
+
+                if ($LASTEXITCODE -gt 0) {
+                    throw ("7-zip returned: " + $LASTEXITCODE)
+                }
+            }
+            else {
+                Expand-Archive -Path $backupZipFilePath -DestinationPath $plexAppDataDirPath -Force
+            }
         }
         catch {
             LogException $_
@@ -1952,6 +2064,8 @@ function DecompressPlexAppDataFolder {
 function DecompressPlexAppData {
     param (
         [string]
+        $type,
+        [string]
         $plexAppDataDir,
         [string]
         $backupDirPath,
@@ -1964,7 +2078,9 @@ function DecompressPlexAppData {
         [string]
         $subDirFiles,
         [string]
-        $subDirFolders
+        $subDirFolders,
+        [string]
+        $archiverPath
     )
 
     # Build path to the ZIP file that holds files from Plex app data folder.
@@ -1981,7 +2097,16 @@ function DecompressPlexAppData {
         LogMessage (Indent (GetTimestamp))
 
         try {
-            Expand-Archive -Path $zipFilePath -DestinationPath $plexAppDataDir -Force
+            if ($type -eq "7zip") {
+                & $archiverPath "x" "$zipFilePath" "-o$plexAppDataDir" "-aoa"
+
+                if ($LASTEXITCODE -gt 0) {
+                    throw ("7-zip returned: " + $LASTEXITCODE)
+                }
+            }
+            else {
+                Expand-Archive -Path $zipFilePath -DestinationPath $plexAppDataDir -Force
+            }
         }
         catch {
             LogException $_
@@ -2002,11 +2127,13 @@ function DecompressPlexAppData {
 
     foreach ($backupZipFile in $backupZipFiles) {
         if (!(DecompressPlexAppDataFolder `
+                $type `
                 $backupZipFile `
                 (Join-Path $backupDirPath $subDirFolders) `
                 $plexAppDataDir `
                 $tempZipFileDir `
-                $zipFileExt)) {
+                $zipFileExt `
+                $archiverPath)) {
             return $false
         }
     }
@@ -2018,6 +2145,8 @@ function CompressPlexAppDataFolder {
     param (
         [string]
         $mode,
+        [string]
+        $type,
         [object]
         $sourceDir,
         [string]
@@ -2025,13 +2154,15 @@ function CompressPlexAppDataFolder {
         [string]
         $tempZipFileDir,
         [string]
-        $zipFileExt
+        $zipFileExt,
+        [string]
+        $archiverPath
     )
 
     $backupZipFileName = $sourceDir.Name + $zipFileExt
     $backupZipFilePath = Join-Path $backupDirPath $backupZipFileName
 
-    if ((Test-Path $backupZipFilePath -PathType Leaf) -and ($mode -ne "Update")) {
+    if ((Test-Path $backupZipFilePath -PathType Leaf)) {
         LogWarning "Backup archive already exists in:"
         LogWarning (Indent $backupZipFilePath)
         LogWarning "Skipping."
@@ -2039,7 +2170,7 @@ function CompressPlexAppDataFolder {
         return $true
     }
 
-    if ($tempZipFileDir -and ($mode -ne "Update")) {
+    if ($tempZipFileDir) {
         $tempZipFileName= (New-Guid).Guid + $zipFileExt
 
         $tempZipFilePath= Join-Path $tempZipFileDir $tempZipFileName
@@ -2052,7 +2183,16 @@ function CompressPlexAppDataFolder {
         LogMessage (Indent (GetTimestamp))
 
         try {
-            Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $tempZipFilePath
+            if ($type -eq "7zip") {
+                & $archiverPath a "$tempZipFilePath" (Join-Path $sourceDir.FullName "*") -r
+
+                if ($LASTEXITCODE -gt 0) {
+                    throw ("7-zip returned: " + $LASTEXITCODE)
+                }
+            }
+            else {
+                Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $tempZipFilePath
+            }
         }
         catch {
             LogException $_
@@ -2112,8 +2252,12 @@ function CompressPlexAppDataFolder {
         LogMessage (Indent (GetTimestamp))
 
         try {
-            if ($mode -eq "Update") {
-                Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $backupZipFilePath -Update
+            if ($type -eq "7zip") {
+                & $archiverPath a "$backupZipFilePath" (Join-Path $sourceDir.FullName "*") -r
+
+                if ($LASTEXITCODE -gt 0) {
+                    throw ("7-zip returned: " + $LASTEXITCODE)
+                }
             }
             else {
                 Compress-Archive -Path (Join-Path $sourceDir.FullName "*") -DestinationPath $backupZipFilePath
@@ -2218,6 +2362,8 @@ function CompressPlexAppData {
         [string]
         $mode,
         [string]
+        $type,
+        [string]
         $plexAppDataDir,
         [string[]]
         $excludePlexAppDataDirs,
@@ -2232,7 +2378,9 @@ function CompressPlexAppData {
         [string]
         $subDirFiles,
         [string]
-        $subDirFolders
+        $subDirFolders,
+        [string]
+        $archiverPath
     )
 
     # Build path to the ZIP file that will hold files from Plex app data folder.
@@ -2247,16 +2395,25 @@ function CompressPlexAppData {
     LogMessage "at:"
     LogMessage (Indent (GetTimestamp))
 
-    # Skip if ZIP file already exists, unless it's an incremental update.
-    if ((Test-Path $zipFilePath -PathType Leaf) -and ($mode -ne "Update")) {
+    # Skip if ZIP file already exists.
+    if ((Test-Path $zipFilePath -PathType Leaf)) {
         LogWarning "Backup file already exists in:"
         LogWarning (Indent $zipFilePath)
         LogWarning "Skipping."
     }
     else {
         try {
-            Get-ChildItem -File $plexAppDataDir |
-                Compress-Archive -DestinationPath $zipFilePath -Update
+            if ($type -eq "7zip") {
+                & $archiverPath a "$zipFilePath" (Get-ChildItem (Join-Path $plexAppDataDir "*") -File)
+
+                if ($LASTEXITCODE -gt 0) {
+                    throw ("7-zip returned: " + $LASTEXITCODE)
+                }
+            }
+            else {
+                Get-ChildItem -File $plexAppDataDir |
+                    Compress-Archive -DestinationPath $zipFilePath -Update
+            }
         }
         catch {
             LogException $_
@@ -2284,10 +2441,12 @@ function CompressPlexAppData {
     foreach ($plexAppDataSubDir in $plexAppDataSubDirs) {
         if (!(CompressPlexAppDataFolder `
                 $mode `
+                $type `
                 $plexAppDataSubDir `
                 (Join-Path $backupDirPath $subDirFolders) `
                 $tempZipFileDir `
-                $zipFileExt)) {
+                $zipFileExt `
+                $archiverPath)) {
             return $false
         }
     }
@@ -2329,12 +2488,14 @@ function RestorePlexFromBackup {
         $zipFileExt,
         [string]
         $regFileExt,
-        [bool]
-        $robocopy,
+        [string]
+        $type,
         [int]
         $retries,
         [int]
-        $retryWaitSec
+        $retryWaitSec,
+        [string]
+        $archiverPath
     )
     # Make sure the backup root folder exists.
     WakeUpDir $backupRootDir
@@ -2371,7 +2532,7 @@ function RestorePlexFromBackup {
         return $false
     }
 
-    if ($robocopy) {
+    if ($type -eq "Robocopy") {
         if (!(RobocopyPlexAppData `
                 (Join-Path $backupDirPath $subDirFiles) `
                 $plexAppDataDir `
@@ -2383,13 +2544,15 @@ function RestorePlexFromBackup {
     }
     else {
        if (!(DecompressPlexAppData `
+                $type `
                 $plexAppDataDir `
                 $backupDirPath `
                 $tempZipFileDir `
                 $backupFileName `
                 $zipFileExt `
                 $subDirFiles `
-                $subDirFolders)) {
+                $subDirFolders `
+                $archiverPath)) {
             return $false
         }
 
@@ -2476,12 +2639,14 @@ function CreatePlexBackup {
         $zipFileExt,
         [string]
         $regFileExt,
-        [bool]
-        $robocopy,
+        [string]
+        $type,
         [int]
         $retries,
         [int]
-        $retryWaitSec
+        $retryWaitSec,
+        [string]
+        $archiverPath
     )
 
     WakeUpDir $backupRootDir
@@ -2616,7 +2781,7 @@ function CreatePlexBackup {
         }
     }
 
-    if ($robocopy) {
+    if ($type -eq "Robocopy") {
         if (!(RobocopyPlexAppData `
                 $plexAppDataDir `
                 (Join-Path $backupDirPath $subDirFiles) `
@@ -2643,6 +2808,7 @@ function CreatePlexBackup {
         # Compress and archive Plex app data.
         if (!(CompressPlexAppData `
                 $mode `
+                $type `
                 $plexAppDataDir `
                 $excludePlexAppDataDirs `
                 $backupDirPath `
@@ -2650,7 +2816,8 @@ function CreatePlexBackup {
                 $backupFileName `
                 $zipFileExt `
                 $subDirFiles `
-                $subDirFolders)) {
+                $subDirFolders `
+                $archiverPath)) {
             if (!(RestoreSpecialSubDirs `
                     $specialPlexAppDataSubDirs `
                     $plexAppDataDir `
@@ -2683,7 +2850,7 @@ function CreatePlexBackup {
     $Error.Clear()
 
     # Copy moved special subfolders back to original folders.
-    if (!$robocopy) {
+    if ($type -ne "Robocopy") {
         if (!(RestoreSpecialSubDirs `
                 $specialPlexAppDataSubDirs `
                 $plexAppDataDir `
@@ -2726,6 +2893,23 @@ if (!(InitConfig)) {
 }
 
 InitMode
+InitType
+
+if ($Type -eq "7zip") {
+    if (!$ArchiverPath) {
+        LogError "Please set the value of parameter 'ArchiverPath' to point to the 7-zip command-line tool (7z.exe)." $false
+        exit $EXITCODE_ERROR_ARCHIVERPATH
+    }
+
+    if (!(Test-Path -Path $ArchiverPath -PathType Leaf)) {
+        LogError "The 7-zip command line tool is not found in:" $false
+        LogError (Indent $ArchiverPath) $false
+        LogError "Please define a valid path in parameter:" $false
+        LogError (Indent "ArchiverPath") $false
+        exit $EXITCODE_ERROR_ARCHIVERPATH
+    }
+}
+
 InitBackupRootDir
 InitMailSetting
 
@@ -2814,10 +2998,10 @@ LogMessage "Operation mode:"
 LogMessage (Indent $Mode.ToUpper())
 
 LogMessage "Backup type:"
-if ($Robocopy) {
-    LogMessage (Indent "ROBOCOPY")
+if ($Type) {
+    LogMessage (Indent $Type.ToUpper())
 } else {
-    LogMessage (Indent "COMPRESSION")
+    LogMessage (Indent "DEFAULT")
 }
 
 if ($LogFile) {
@@ -2852,8 +3036,8 @@ $subjectError   = "Plex backup failed :-("
 $subjectSuccess = "Plex backup completed :-)"
 $backupMode     = $null
 
-if ($Robocopy) {
-    $backupMode = $Mode.ToUpper() + " -ROBOCOPY"
+if ($Type) {
+    $backupMode = $Mode.ToUpper() + " -" + $Type.ToUpper()
 }
 else {
     $backupMode = $Mode.ToUpper()
@@ -3008,9 +3192,10 @@ if ($Mode -eq "Restore") {
         $BackupFileName `
         $ZipFileExt `
         $RegFileExt `
-        $Robocopy `
+        $Type `
         $Retries `
-        $RetryWaitSec
+        $RetryWaitSec `
+        $ArchiverPath
 }
 # Back up Plex app data.
 else {
@@ -3034,9 +3219,10 @@ else {
         $BackupFileName `
         $ZipFileExt `
         $RegFileExt `
-        $Robocopy `
+        $Type `
         $Retries `
-        $RetryWaitSec
+        $RetryWaitSec `
+        $ArchiverPath
 }
 
 # Start all previously running Plex services (if any).
