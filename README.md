@@ -10,22 +10,24 @@ Plex does not offer a meaningful backup feature. Yes, it can back up a Plex data
 IMPORTANT: The script will not back up media (video, audio, images) or Plex program files. You must use different backup techniques for those. For example, you can keep your media files on a RAID 5 disk array. And you don't really need to back up Plex program files, since you can always download them. But for everything else, PlexBackup is your guy.
 
 ### Modes of operation
-PlexBackup can run in four modes (specified by the `Mode` switch or a corresponding shortcut):
+PlexBackup can run in three modes (specified by the `Mode` switch or a corresponding shortcut):
 
-- _Backup_: the default mode that starts a new backup job.
-- _Continue_: resumes an incomplete backup job.
-- _Update_: experimental feature to performs a differential backup (may not work faster than standard backup or at all).
-- _Restore_: restores Plex application data from a backup.
+- `Backup`: the default mode that starts a new backup job.
+- `Continue`: resumes an incomplete backup job.
+- `Restore`: restores Plex application data from a backup.
 
-If a previous backup does not exist, the _Continue_ and the _Update_ modes will behave just like the _Backup_ mode. In the _Robocopy_ mode described below, the _Continue_ and the _Update_ modes work identically.
+If a previous backup does not exist, the `Continue` mode will behave just like the `Backup` mode. In the `Robocopy` mode (described below), the `Continue` and the `Backup` modes work identically.
 
 In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. After the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process.
 
-### Types of backup
-The script can perform two types of backup:
+### Backup types
+The script can perform two types of backup: compressed (default or `7zip`) and uncompressed (`Robocopy`). 
 
-#### Compressed
-By default, the script compresses every essential folder under the root of the Plex application data folder (_Plex Media Server_) and saves the compressed data as separate ZIP files. For better efficiency (in case the backup folder is remote, such as on a NAS share), it first compresses the data in a temporary local file and then moves the compressed file to a backup folder (you can compress the data and save the ZIP files directly to the backup folder by setting the value of the `TempZipFileDir` parameter to null or empty string). There is a problem with PowerShell's compression routine that fails to process files and folders with paths that are longer than 260 characters. If you get this error, use the `SpecialPlexAppDataSubDirs` parameter (in code or config file) to specify the folders that are too long (or parents of the subfolders or files that are too long) and PlexBackup will copy them as-is without using compression (by default, the following application data folder is not compressed: `Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated`).
+#### Default
+By default, the script compresses every essential folder under the root of the Plex application data folder (`Plex Media Server`) and saves the compressed data as separate ZIP files. For better efficiency (in case the backup folder is remote, such as on a NAS share), it first compresses the data in a temporary local file and then moves the compressed file to a backup folder (you can compress the data and save the ZIP files directly to the backup folder by setting the value of the `TempZipFileDir` parameter to null or empty string). There is a problem with PowerShell's compression routine that fails to process files and folders with paths that are longer than 260 characters. If you get this error, use the `SpecialPlexAppDataSubDirs` parameter (in code or config file) to specify the folders that are too long (or parents of the subfolders or files that are too long) and PlexBackup will copy them as-is without using compression (by default, the following application data folder is not compressed: `Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated`).
+
+#### 7zip
+Instead of default compression, you can use the [7-zip](https://www.7-zip.org/) command-line tool `7z.exe`), which works faster (for both compression and extraction) and produces smaller compressed files. To use 7-zip encryption, [install 7-zip](https://www.7-zip.org/download.html), and set the PlexBackup script's `Type` parameter to `7zip` (i.e. `-Type 7zip`) or use the `-SevenZip` shortcut (on command line). If you install 7-zip in a non-default directory, use the `ArchiverPath` parameter to set path to the `7z.exe` file.
 
 #### Robocopy
 If you run PlexBackup with the `Robocopy` switch, instead of archiving, the script will create a mirror of the Plex application data folder (minus the non-essential folders) using the Robocopy command. 
@@ -69,7 +71,8 @@ A config file must use [JSON formatting](https://www.json.org/), such as:
         "strictMode": false,
         "description": "Sample configuration settings for PlexBackup.ps1."
     },
-    "Mode": { "value": "" },
+    "Mode": { "value": null },
+    "Type": { "value": null },
     "PlexAppDataDir": { "value": null },
     "BackupRootDir": { "value": "\\\\MYNAS\\PlexBackup" },
     "BackupDirPath": { "value": null },
@@ -101,13 +104,14 @@ A config file must use [JSON formatting](https://www.json.org/), such as:
     "PromptForCredential": { "value": true },
     "SaveCredential": { "value": true },
     "Anonymous": { "value": null },
-    "SendLogFile": { "value": true }
+    "SendLogFile": { "value": true },
+	"ArchiverPath": { "value": null }
 }
 ```
 The `_meta` element describes the file and the file structure. It does not include any configuration settings. The important attributes  of the `_meta` element are:
 
-- _version_: can be used to handle future file schema changes, and
-- _strictMode_: when set to `true` every config setting that needs to be used must have the `hasValue` attribute set to `true`; if the _strictMode_ element is missing or if its value is set to `false`, every config setting that gets validated by the PowerShell's `if` statement will be used.
+- `version`: can be used to handle future file schema changes, and
+- `strictMode`: when set to `true` every config setting that needs to be used must have the `hasValue` attribute set to `true`; if the `strictMode` element is missing or if its value is set to `false`, every config setting that gets validated by the PowerShell's `if` statement will be used.
 
 Make sure you use proper JSON formatting (escape characters, etc) when defining the config values (e.g. you must escape aeach backslash characters with another backslash).
 
@@ -118,28 +122,28 @@ Use the `Log` switch to write operation progress and informational messages to a
 Use the `ErrorLog` switch to write error messages to a dedicated error log file. By default, the error log file will be created in the backup folder. The default error log file name reflects the name of the script with the `.err.log` extension, such as `PlexBackup.ps1.err.log`. You can specify a custom error log file path via the `ErrorLogFile` argument. By default, PlexBackup deletes an old error log file (if one already exists), but if you specify the `ErrorLogAppend` switch, it will append new error messages to the existing error log file. If no errors occur, the error log file will not be created.
 
 ### Backup snapshots
-Every time you run a new backup job, the script will create a backup snapshot folder. The name of the folder will reflect the timestamp of when the script started. Use the `Keep` switch to specify how many backup snapshots you want to keep: _0_ (keep all previously created backups), _1_ (keep the current backup snapshot only), _2_ (keep the current backup snapshot and one before it), _3_ (keep the current backup snapshot and two most recent snapshots), and so on. The default value is _3_.
+Every time you run a new backup job, the script will create a backup snapshot folder. The name of the folder will reflect the timestamp of when the script started. Use the `Keep` switch to specify how many backup snapshots you want to keep: `0` (keep all previously created backups), `1` (keep the current backup snapshot only), `2` (keep the current backup snapshot and one before it), `3` (keep the current backup snapshot and two most recent snapshots), and so on. The default value is `3`.
 
 ### Email notification
 Use the `SendMail` parameter to let PlexBackup know whether or when you want to receive email notifications about the backup job completion using one of the following values:
 
-- _Never_: email notification will not be sent (default)
-- _Always_: email notification will be sent always
-- _OnError_: receive a notification if an error occurs during any operation
-- _OnSuccess_: receive a notification only if an operation was successful
-- _OnBackup_: receive a notification about a new or resumed backup operation on error or success
-- _OnBackupError_: receive notification about a new or resumed backup operations on error only
-- _OnBackupSuccess_: receive a notifications about a new or resumed backup operations on success only
-- _OnRestore_: receive a notification about a restore operation on error or success
-- _OnRestoreError_: receive a notification about a failed restore operation only
-- _OnRestoreSuccess_: receive a notifications about a failed restore operation only
+- `Never`: email notification will not be sent (default)
+- `Always`: email notification will be sent always
+- `OnError`: receive a notification if an error occurs during any operation
+- `OnSuccess`: receive a notification only if an operation was successful
+- `OnBackup`: receive a notification about a new or resumed backup operation on error or success
+- `OnBackupError`: receive notification about a new or resumed backup operations on error only
+- `OnBackupSuccess`: receive a notifications about a new or resumed backup operations on success only
+- `OnRestore`: receive a notification about a restore operation on error or success
+- `OnRestoreError`: receive a notification about a failed restore operation only
+- `OnRestoreSuccess`: receive a notifications about a failed restore operation only
 
-To receive a copy of the log file along with the email notification, set the _SendLogFile_ parameter to:
+To receive a copy of the log file along with the email notification, set the `SendLogFile` parameter to:
 
-- _Never_: the log file will not be sent as an email message attachment (default)
-- _Always_: the log file will be sent always
-- _OnError_: only send the log file if an error occurs
-- _OnSuccess_: only send the log file if no error occurs
+- `Never`: the log file will not be sent as an email message attachment (default)
+- `Always`: the log file will be sent always
+- `OnError`: only send the log file if an error occurs
+- `OnSuccess`: only send the log file if no error occurs
 
 #### SMTP server
 When sending email notifications, Plex backup will need to know how to connect to the SMTP server. You can specify the server via the `SmtpServer` parameter, such as: `-SmtpServer smtp.gmail.com `. If the server is using a non-default SMTP port, use the `Port` parameter to specify the port, such as; `-Port 587`. If you want your message to be sent over encrypted (SSL) channel, set the `UseSsl` switch. 
@@ -160,7 +164,7 @@ IMPORTANT: Most public providers, such as Gmail, Yahoo, Hotmail, and so on, have
 For additional information or if you run into any issues, check support articles covering your provider.
 
 #### Addresses
-By defaul, PlexBackup will use the username provided via the SMTP credentials as both the _To_ and _From_ addresses, but you can set them explicitly via the `To` and `From` parameters. If the `To` parameter is not specified, the recepient's address will be the same as the sender's.
+By defaul, PlexBackup will use the username provided via the SMTP credentials as both the `To` and `From` addresses, but you can set them explicitly via the `To` and `From` parameters. If the `To` parameter is not specified, the recepient's address will be the same as the sender's.
 
 ## See also
 
@@ -172,13 +176,13 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
 ```PowerShell
 .\PlexBackup.ps1 `
     [[-Mode] <String> | -Backup | -Continue | -Update | -Restore] `
+	[[-Type] <String> | -SevenZip | -Robocopy ] `
     [[-ConfigFile] <String>] `
     [[-PlexAppDataDir] <String>] `
     [[-BackupRootDir] <String>] `
     [[-BackupDirPath] <String>] `
     [[-TempZipFileDir] <String>] `
     [[-Keep <Int32>] `
-    [-Robocopy] `
     [[-Retries] <Int32>] `
     [[-RetryWaitSec] <Int32>] `
     [-Log|-L] `
@@ -206,227 +210,232 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
 ```
 ### Arguments
 
-_-Mode_
+`-Mode`
     
-Specifies the mode of operation: _Backup_ (default), _Continue_, or _Restore_. Alternatively, you can specify one of the shortcut switches: _-Backup_, _-Continue_, _-Update_, or _-Restore_. Keep in mind that the _Mode_ parameter and the shortcut switches are mutually exclusive (i.e. you can use at most one).
+Specifies the mode of operation: `Backup` (default), `Continue`, or `Restore`. Alternatively, you can specify one of the shortcut switches: `-Backup`, `-Continue`, or `-Restore`. Keep in mind that the `Mode` parameter and the shortcut switches are mutually exclusive (i.e. you can use at most one).
 
-_-ConfigFile_
+`-Type`
     
-Path to the optional custom config file (default: _.\PlexBackup.ps1.json_).
+Specifies the the non-default backup type: `7zip` or `Robocopy`. Alternatively, you can specify a shortcut switch: `-SevenZip` or `-Robocopy`. Keep in mind that the `Type` parameter and the shortcut switches are mutually exclusive (i.e. you can use at most one). If neither the `-Type` nor any of the corresponding shortcut switches are specified, the default Windows compression will be used.
 
-_-PlexAppDataDir_
+`-ConfigFile`
+    
+Path to the optional custom config file (default: `.\PlexBackup.ps1.json`).
 
-Location of the Plex Media Server application data folder (default: _%localappdata%\Plex Media Server_).
+`-PlexAppDataDir`
 
-_-BackupRootDir_
+Location of the Plex Media Server application data folder (default: `%localappdata%\Plex Media Server`).
+
+`-BackupRootDir`
 
 Path to the root of the backup folder (backup will be created under a subfolder reflecting the timestamp of the backup job). If not specified, the script folder will be used.
 
-_-BackupDirPath_
+`-BackupDirPath`
 
-When running the script in the _Restore_ mode, this parameter can holds the path to the backup folder (by default, the subfolder with the most recent timestamp in the name in the backup root folder identified by the _BackupRootDir_ parameter will be used).
+When running the script in the `Restore` mode, this parameter can holds the path to the backup folder (by default, the subfolder with the most recent timestamp in the name in the backup root folder identified by the `BackupRootDir` parameter will be used).
 
-_-TempZipFileDir_
+`-TempZipFileDir`
 
-Temporary folder used to stage the archiving job (the default value is the standard Windows _TEMP_ folder). To bypass the staging step, set this parameter to `null` or empty string.
+Temporary folder used to stage the archiving job (the default value is the standard Windows `TEMP` folder). To bypass the staging step, set this parameter to `null` or empty string.
 
-_-Keep_
+`-Keep`
 
-Number of old backup snapshots to keep: _0_ (keep all previously created backups), _1_ (keep the current backup snapshot only), _2_ (keep the current backup snapshot and one before it), _3_ (keep the current backup snapshot and two most recent snapshots), and so on. The default value is _3_.
+Number of old backup snapshots to keep: `0` (keep all previously created backups), `1` (keep the current backup snapshot only), `2` (keep the current backup snapshot and one before it), `3` (keep the current backup snapshot and two most recent snapshots), and so on. The default value is `3`.
 
-_-Robocopy_
+`-Retries`
 
-Set this switch to create (or restore) Plex application data (from) a mirror copy using Robocopy.
+The number of retries on failed copy operations that corresponds to the Robocopy `/R` switch (default: 5). Only needed when the `Robocopy` switch is set.
 
-_-Retries_
+`-RetryWaitSec`
 
-The number of retries on failed copy operations that corresponds to the Robocopy `_/R_` switch (default: 5). Only needed when the _Robocopy_ switch is set.
+Specifies the wait time between retries in seconds that corresponds to the Robocopy `/W` switch (default: 10). Only needed when the `Robocopy` switch is set.
 
-_-RetryWaitSec_
+`-Log`, `-L`
 
-Specifies the wait time between retries in seconds that corresponds to the Robocopy `_/W_` switch (default: 10). Only needed when the _Robocopy_ switch is set.
+Set this switch to write informational messages to a log file (in addition to the PowerShell console). The default log file will be created in the backup folder and will be named after this script with the `.log` extension, such as `PlexBackup.ps1.log`. You can specify a custom log file via the `LogFile` parameters.
 
-_-Log, -L_
-
-Set this switch to write informational messages to a log file (in addition to the PowerShell console). The default log file will be created in the backup folder and will be named after this script with the `.log` extension, such as `PlexBackup.ps1.log`. You can specify a custom log file via the _LogFile_ parameters.
-
-_-LogFile_
+`-LogFile`
 
 Defines a custom log file path. When this parameter is set to a non-null and non-empty value, the `-Log` switch can be omitted.
 
-_-LogAppend_
+`-LogAppend`
 
 Set this switch to appended log entries to the existing log file if one already exists (by default, the old log file will be overwritten).
 
-_-ErrorLog_
+`-ErrorLog`
 
-Set this switch to write error messages to an error log file (in addition to the PowerShell console). The default error log file will be created in the backup folder and will be named after this script with the `.err.log` extension, such as `PlexBackup.ps1.err.log`. You can specify a custom log file via the _ErrorLogFile_ parameters.
+Set this switch to write error messages to an error log file (in addition to the PowerShell console). The default error log file will be created in the backup folder and will be named after this script with the `.err.log` extension, such as `PlexBackup.ps1.err.log`. You can specify a custom log file via the `ErrorLogFile` parameters.
 
-_-ErrorLogFile_
+`-ErrorLogFile`
 
 Defines a custom error log file path. When this parameter is set to a non-null and non-empty value, the `-ErrorLog` switch can be omitted.
 
-_-ErrorLogAppend_
+`-ErrorLogAppend`
 
 Set this switch to appended error log entries to the existing error log file if one already exists (by default, the old error log file will be overwritten).
 
-_-Quiet, -Q_
+`-Quiet`, `-Q`
 
 Set this switch to suppress all log entries sent to the PowerShell console.
 
-_-Shutdown_
+`-Shutdown`
 
 Set this switch to not start the Plex Media Server process at the end of the operation. This could be handy for restore operations, so you can double check that all is good before launching Plex Media Server.
 
-_-SendMail_
+`-SendMail`
 
-Indicates in which case the script must send an email notification about the result of the operation: _Never_ (default),
-_Always_, _OnError_ (for any operation), _OnSuccess_ (for any operation), _OnBackup_ (for both the _Backup_ and _Continue_ modes on either error or success), _OnBackupError_, _OnBackupSuccess_, _OnRestore_ (on either error or success), _OnRestoreError_, and _OnRestoreSuccess_.
+Indicates in which case the script must send an email notification about the result of the operation: `Never` (default),
+`Always`, `OnError` (for any operation), `OnSuccess` (for any operation), `OnBackup` (for both the `Backup` and `Continue` modes on either error or success), `OnBackupError`, `OnBackupSuccess`, `OnRestore` (on either error or success), `OnRestoreError`, and `OnRestoreSuccess`.
 
-_-From_
+`-From`
 
-Specifies the email address when email notification sender. If this value is not provided, the username from the credentails saved in the credentials file or enetered at the credentials prompt will be used. If the _From_ address cannot be determined, the notification will not be sent.
+Specifies the email address when email notification sender. If this value is not provided, the username from the credentials saved in the credentials file or entered at the credentials prompt will be used. If the `From` address cannot be determined, the notification will not be sent.
 
-_-To_
+`-To`
 
-Specifies the email address of the email recepient. If this value is not provided, the addressed defined in the _To_ parameter will be used.
+Specifies the email address of the email recipient. If this value is not provided, the addressed defined in the `To` parameter will be used.
 
-_-SmtpServer_
+`-SmtpServer`
 
 Defines the SMTP server host. If not specified, the notification will not be sent.
 
-_-Port_
+`-Port`
 
-Specifies an alternative port on the SMTP server. Default: _0_ (zero, i.e. the default port 25 will be used).
+Specifies an alternative port on the SMTP server. Default: `0` (zero, i.e. the default port 25 will be used).
 
-_-UseSsl_
+`-UseSsl`
 
 Tells the script to use the Secure Sockets Layer (SSL) protocol when connecting to the SMTP server. By default, SSL is not used.
 
-_-CredentialFile_
+`-CredentialFile`
 
 Path to the file holding username and encrypted password of the account that has permission to send mail via the SMTP server.
 
-_-PromptForCredential, -Prompt_
+`-PromptForCredential`, `-Prompt`
 
 Tells the script to prompt user for SMTP server credentials (when they are not specified in the credential file).
 
-_-SaveCredential, -Save_
+`-SaveCredential`, `-Save`
 
 Tells the script to save the SMTP server credentials in the credential file.
 
-_-Anonymous_
+`-Anonymous`
 
 Tells the script to not use credentials when sending email notifications.
 
-_-SendLogFile_
+`-SendLogFile`
 
 Indicates in which case the script must send an attachment along with th email
-notification. Values: _Never_ (default), _OnError_, _OnSuccess_, _Always_.
+notification. Values: `Never` (default), `OnError`, `OnSuccess`, `Always`.
 
-_-NoLogo_
+`-NoLogo`
 
 Supresses the version and copyright message normally displayed in the beginning of the script run.
 
-_-ClearScreen, -Cls_
+`-ClearScreen`, `-Cls`
 
 Clears the console screen in the beginning of the script run.
 
-_-&lt;CommonParameters&gt;_
+`-&lt;CommonParameters&gt;`
     
 Common PowerShell parameters (the script is not using these explicitly).
 
 ## Returns
 
-To check whether the backup script executed successfully or encountered an error, check the value of the `$LASTEXITCODE` variable: _0_ (zero) indicates success, while any positive number indicates an error. Exit code of _1_ implies that the error occurred during the backup or the restore operation. Exit codes higher than _1_ indicate that a problem occurred before the script launched a backup or a restore job. You should not need this, but just in case, here is the list of currently supported exit codes:
+To check whether the backup script executed successfully or encountered an error, check the value of the `$LASTEXITCODE` variable: `0` (zero) indicates success, while any positive number indicates an error. Exit code of `1` implies that the error occurred during the backup or the restore operation. Exit codes higher than `1` indicate that a problem occurred before the script launched a backup or a restore job. You should not need this, but just in case, here is the list of currently supported exit codes:
 
-- _0_: success
-- _1_: error during backup or restore operation
-- _2_: error processing config file
-- _3_: problem determining or setting backup folder
-- _4_: problem with log file(s)
-- _5_: cannot determine path to PMS executable
-- _6_: cannot read Plex Windows services
-- _7_: cannot stop Plex Windows services
-- _8_: cannot stop PMS executable file
+- `0`: success
+- `1`: error during backup or restore operation
+- `2`: error processing config file
+- `3`: problem determining or setting backup folder
+- `4`: problem with log file(s)
+- `5`: cannot determine path to PMS executable
+- `6`: cannot read Plex Windows services
+- `7`: cannot stop Plex Windows services
+- `8`: cannot stop PMS executable file
+- `9`: path to 7-zip command-line tool is undefined or does not exist
 
 ## Examples
 
 The following examples assume that the the default settings are used for the unspecified script arguments.
 
-### Example
+### Example 1
 ```PowerShell
 PlexBackup.ps1
 ```
-Backs up Plex application data to the default backup location using file and folder compression.
+Backs up Plex application data to the default backup location using the default Windows compression.
 
-### Example
+### Example 2
 ```PowerShell
 PlexBackup.ps1 -ConfigFile "C:\Scripts\PlexBackup.ps1.ROBOCOPY.json
 ```
 Runs the script with the non-default settings specified in the custom config file.
 
-### Example
+### Example 3
 ```PowerShell
 PlexBackup.ps1 -Log -ErrorLog -Keep 5
 ```
 Backs up Plex application data to the default backup location using file and folder compression. Writes progress to the default log file. Writes error messages to the default error log file. Keeps current and four previous backup snapshots (total of five).
 
-### Example
+### Example 4
 ```PowerShell
+PlexBackup.ps1 -Type Robocopy
 PlexBackup.ps1 -Robocopy
 ```
 Creates a mirror copy of the Plex application data (minus the non-essential folders) in the default backup location using the Robocopy command.
 
-### Example
+### Example 5
+```PowerShell
+PlexBackup.ps1 -Type 7zip
+PlexBackup.ps1 -SevenZip
+```
+Backs up Plex application data to the default backup location using the 7-zip command-line tool.
+
+### Example 6
 ```PowerShell
 PlexBackup.ps1 -BackupRootDir "\\MYNAS\Backup\Plex"
 ```
 Backs up Plex application data to the specified backup location on a network share using file and folder compression.
 
-### Example
+### Example 7
 ```PowerShell
+PlexBackup.ps1 -Mode Continue
 PlexBackup.ps1 -Continue
 ```
 Continues the last backup process (using file and folder compression) where it left off.
 
-### Example
+### Example 8
 ```PowerShell
 PlexBackup.ps1 -Continue -Robocopy
 ```
 Reruns the last backup process using a mirror copy.
 
-### Example
-```PowerShell
-PlexBackup.ps1 -Updates
-```
-Applies an incremental update to the last backup.
-
-### Example
+### Example 9
 ```PowerShell
 PlexBackup.ps1 -Mode Restore
+PlexBackup.ps1 -Restore
 ```
 Restores Plex application data from the latest backup from the default folder holding compressed data.
 
-### Example
+### Example 10
 ```PowerShell
-PlexBackup.ps1 -Mode Restore -Robocopy
+PlexBackup.ps1 -Restore -Robocopy
 ```
 Restores Plex application data from the latest backup in the default folder holding a mirror copy of the Plex application data folder.
 
-### Example
+### Example 11
 ```PowerShell
 PlexBackup.ps1 -Mode Restore -BackupDirPath "\\MYNAS\PlexBackup\20190101183015"
 ```
 Restores Plex application data from the specified backup folder holding compressed data on a remote share.
 
-### Example
+### Example 12
 ```PowerShell
 PlexBackup.ps1 -SendMail Always -UseSsl -Prompt -Save -SendLogFile OnError -SmtpServer smtp.gmail.com -Port 587
 ```
 Runs a backup job and sends an email notification over an SSL channel. If the backup operation fails, the log file will be attached to the email message. The sender's and the recipient's email addresses will determined from the username of the credential object. The credential object will be set either from the credential file or, if the file does not exist, via a user prompt (in the latter case, the credential object will be saved in the credential file with password encrypted using a user- and computer-specific key).
 
-### Example
+### Example 13
 ```PowerShell
 Get-Help .\PlexBackup.ps1
 ```
