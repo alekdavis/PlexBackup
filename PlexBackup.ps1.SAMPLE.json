@@ -44,9 +44,6 @@
     "Keep": {
         "value": null
     },
-    "Robocopy": {
-        "value": false
-    },
     "Retries": {
         "value": null
     },
