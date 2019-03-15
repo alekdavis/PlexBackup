@@ -336,7 +336,7 @@ Supresses the version and copyright message normally displayed in the beginning 
 
 Clears the console screen in the beginning of the script run.
 
-`-&lt;CommonParameters&gt;`
+`<CommonParameters>`
     
 Common PowerShell parameters (the script is not using these explicitly).
 
