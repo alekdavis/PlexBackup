@@ -5,13 +5,16 @@
         "description": "Sample configuration settings for PlexBackup.ps1."
     },
     "Mode": {
-        "value": ""
+        "value": null
+    },
+    "Type": {
+        "value": null
     },
     "PlexAppDataDir": {
         "value": null
     },
     "BackupRootDir": {
-        "value": "\\\\MYNAS\\PlexBackup"
+        "value": null
     },
     "BackupDirPath": {
         "value": null
@@ -104,5 +107,8 @@
     },
     "SendLogFile": {
         "value": "Never"
+    },
+    "ArchiverPath": {
+        "value": null
     }
 }
