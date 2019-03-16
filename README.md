@@ -105,7 +105,7 @@ A config file must use [JSON formatting](https://www.json.org/), such as:
     "SaveCredential": { "value": true },
     "Anonymous": { "value": null },
     "SendLogFile": { "value": true },
-	"ArchiverPath": { "value": null }
+    "ArchiverPath": { "value": null }
 }
 ```
 The `_meta` element describes the file and the file structure. It does not include any configuration settings. The important attributes  of the `_meta` element are:
