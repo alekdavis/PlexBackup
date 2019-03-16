@@ -262,9 +262,9 @@ $env:ProgramFiles\7-Zip\7z.exe.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.5.0
+Version    : 1.5.1
 Author     : Alek Davis
-Created on : 2019-03-15
+Created on : 2019-03-16
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -2388,47 +2388,51 @@ function CompressPlexAppData {
     $zipFileDir  = Join-Path $backupDirPath $subDirFiles
     $zipFilePath = Join-Path $zipFileDir $zipFileName
 
-    LogMessage "Backing up Plex app data files from:"
-    LogMessage (Indent $plexAppDataDir)
-    LogMessage "to:"
-    LogMessage (Indent $zipFilePath)
-    LogMessage "at:"
-    LogMessage (Indent (GetTimestamp))
+    # Back up files from root folder, if there are any.
+    if (@(Get-ChildItem (Join-Path $plexAppDataDir "*") -File ).Count -gt 0) {
 
-    # Skip if ZIP file already exists.
-    if ((Test-Path $zipFilePath -PathType Leaf)) {
-        LogWarning "Backup file already exists in:"
-        LogWarning (Indent $zipFilePath)
-        LogWarning "Skipping."
-    }
-    else {
-        try {
-            if ($type -eq "7zip") {
-                & $archiverPath a "$zipFilePath" (Get-ChildItem (Join-Path $plexAppDataDir "*") -File)
+        LogMessage "Backing up Plex app data files from:"
+        LogMessage (Indent $plexAppDataDir)
+        LogMessage "to:"
+        LogMessage (Indent $zipFilePath)
+        LogMessage "at:"
+        LogMessage (Indent (GetTimestamp))
 
-                if ($LASTEXITCODE -gt 0) {
-                    throw ("7-zip returned: " + $LASTEXITCODE)
-                }
-            }
-            else {
-                Get-ChildItem -File $plexAppDataDir |
-                    Compress-Archive -DestinationPath $zipFilePath -Update
-            }
-        }
-        catch {
-            LogException $_
-
-            return $false
-        }
-
-        if (Test-Path $zipFilePath -PathType Leaf) {
-            LogMessage "Completed at:"
-            LogMessage (Indent (GetTimestamp))
+        # Skip if ZIP file already exists.
+        if ((Test-Path $zipFilePath -PathType Leaf)) {
+            LogWarning "Backup file already exists in:"
+            LogWarning (Indent $zipFilePath)
+            LogWarning "Skipping."
         }
         else {
-            LogWarning "Skipping empty directory."
+            try {
+                if ($type -eq "7zip") {
+                    & $archiverPath a "$zipFilePath" (Get-ChildItem (Join-Path $plexAppDataDir "*") -File)
+
+                    if ($LASTEXITCODE -gt 0) {
+                        throw ("7-zip returned: " + $LASTEXITCODE)
+                    }
+                }
+                else {
+                    Get-ChildItem -File $plexAppDataDir |
+                        Compress-Archive -DestinationPath $zipFilePath -Update
+                }
+            }
+            catch {
+                LogException $_
+
+                return $false
+            }
+
+            if (Test-Path $zipFilePath -PathType Leaf) {
+                LogMessage "Completed at:"
+                LogMessage (Indent (GetTimestamp))
+            }
+            else {
+                LogWarning "Skipping empty directory."
+            }
         }
-     }
+    }
 
     LogMessage "Backing up Plex app data folders from:"
     LogMessage (Indent $plexAppDataDir)
