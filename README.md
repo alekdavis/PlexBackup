@@ -113,7 +113,7 @@ The `_meta` element describes the file and the file structure. It does not inclu
 - `version`: can be used to handle future file schema changes, and
 - `strictMode`: when set to `true` every config setting that needs to be used must have the `hasValue` attribute set to `true`; if the `strictMode` element is missing or if its value is set to `false`, every config setting that gets validated by the PowerShell's `if` statement will be used.
 
-Make sure you use proper JSON formatting (escape characters, etc) when defining the config values (e.g. you must escape aeach backslash characters with another backslash).
+Make sure you use proper JSON formatting (escape characters, etc) when defining the config values (e.g. you must escape each backslash characters with another backslash).
 
 ### Logging
 Use the `Log` switch to write operation progress and informational messages to a log file. By default, the log file will be created in the backup folder. The default log file name reflects the name of the script with the `.log` extension, such as `PlexBackup.ps1.log`. You can specify a custom log file path via the `LogFile` argument. By default, PlexBackup deletes an old log file (if one already exists), but if you specify the `LogAppend` switch, it will append new log messages to the existing log file.
