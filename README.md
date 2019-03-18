@@ -175,35 +175,35 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
 ## Syntax
 ```PowerShell
 .\PlexBackup.ps1 `
-    [[-Mode] <String> | -Backup | -Continue | -Update | -Restore] `
-	[[-Type] <String> | -SevenZip | -Robocopy ] `
-    [[-ConfigFile] <String>] `
-    [[-PlexAppDataDir] <String>] `
-    [[-BackupRootDir] <String>] `
-    [[-BackupDirPath] <String>] `
-    [[-TempZipFileDir] <String>] `
-    [[-Keep <Int32>] `
-    [[-Retries] <Int32>] `
-    [[-RetryWaitSec] <Int32>] `
-    [-Log|-L] `
+    [[-Mode <String>] | -Backup | -Continue | -Update | -Restore] `
+    [[-Type <String>] | -SevenZip | -Robocopy ] `
+    [-ConfigFile <String>] `
+    [-PlexAppDataDir <String>] `
+    [-BackupRootDir <String>] `
+    [-BackupDirPath <String>] `
+    [-TempZipFileDir <String>] `
+    [-Keep <Int32>] `
+    [-Retries <Int32>] `
+    [-RetryWaitSec <Int32>] `
+    [-Log | -L] `
     [-LogAppend] `
-    [[-LogFile] <String>] `
+    [-LogFile <String>] `
     [-ErrorLog] `
     [-ErrorLogAppend] `
-    [[-ErrorLogFile] <String>] `
-    [-Quiet|-Q] `
+    [-ErrorLogFile <String>] `
+    [-Quiet | -Q] `
     [-Shutdown] `
-    [[-SendMail] <String>] `
-    [[-From] <String>] `
-    [[-To] <String>] `
-    [[-SmtpServer] <String>] `
-    [[-Port] <Int32>] `
+    [-SendMail <String>] `
+    [-From <String>] `
+    [-To <String>] `
+    [-SmtpServer <String>] `
+    [-Port <Int32>] `
     [-UseSsl] `
-    [[-CredentialFile] <String>] `
+    [-CredentialFile <String>] `
     [-PromptForCredential] `
     [-SaveCredential] `
     [-Anonymous] `
-    [[-SendLogFile] <String>] `
+    [-SendLogFile <String>] `
     [-NoLogo] `
     [-Cls]
     [<CommonParameters>]
