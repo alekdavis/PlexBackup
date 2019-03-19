@@ -7,7 +7,7 @@ Plex does not offer a meaningful backup feature. Yes, it can back up a Plex data
 ## Overview
 [PlexBackup.ps1](PlexBackup.ps1) (or, briefly, _PlexBackup_) is a [PowerShell](https://docs.microsoft.com/en-us/powershell/scripting/overview) script that can back up and restore a Plex instance on a Windows system. The script backs up the Plex database, Windows registry key, and app data folders essential for the Plex operations (it ignores the non-essential files, such as logs or crash reports). And it makes sure that Plex is not running when the backup job is active (which may take hours). And it can send email to you, too.
 
-IMPORTANT: The script will not back up media (video, audio, images) or Plex program files. You must use different backup techniques for those. For example, you can keep your media files on a RAID 5 disk array. And you don't really need to back up Plex program files, since you can always download them. But for everything else, PlexBackup is your guy.
+IMPORTANT: The script will not back up media (video, audio, images) or Plex program files. You must use different backup techniques for those. For example, you can keep your media files on a [RAID 5](https://en.wikipedia.org/wiki/Standard_RAID_levels#RAID_5) disk array. And you don't really need to back up Plex program files, since you can always download them. But for everything else, PlexBackup is your guy.
 
 ### Backup types
 The script can perform two types of backup: compressed (default or `7zip`) and uncompressed (`Robocopy`). 
