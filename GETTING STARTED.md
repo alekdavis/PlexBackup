@@ -24,11 +24,11 @@ Rename `PlexBackup.ps1.SAMPLE.json` file to `PlexBackup.ps1.json` and make sure 
 
 ### Pick a backup folder
 
-By default, PlexBackup.ps1 creates a backup folder in the same directory from which the script is running. Make sure you are not backing up Plex app data to the same drive (you should save backed up data on a separate local drive, if your computer has more than one, an external drive, such as a [NAS](https://en.wikipedia.org/wiki/Network-attached_storage) share, or an external USB hard drive). Make sure that the backup drive has enough space.
+By default, PlexBackup.ps1 creates a backup folder in the same directory from which the script is running. Make sure you are not backing up Plex app data to the same drive (you should save backed up data on a separate local drive, if your computer has more than one, an external drive, such as a [NAS](https://en.wikipedia.org/wiki/Network-attached_storage) share, or an external USB hard drive). The backup drive must have enough space.
 
 ### Update config file settings
 
-Open the `PlexBackup.ps1.json` file in a text editor, such as _Notepad_, and make sure the backup settings are correct. At the very least, set the location of the backup root folder (`BackupRootDir`). Remember to escape backslash characters (`\`) in the path with another backslash character, e.g. if your backup root folder points to the `\\MYNAS\Backup` share, it must be entered as `\\\\MYNAS\\Backup`. Save the config file.
+Open the `PlexBackup.ps1.json` file in a text editor, such as _Notepad_, and verify the backup settings. At the very least, set the location of the backup root folder (`BackupRootDir`). Remember to escape backslash characters (`\`) in the path with another backslash character, e.g. if your backup root folder points to the `\\MYNAS\Backup` share, it must be entered as `\\\\MYNAS\\Backup`. Save the config file.
 
 ### Make sure Plex Media Server is running
 
