@@ -262,9 +262,9 @@ $env:ProgramFiles\7-Zip\7z.exe.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.5.1
+Version    : 1.5.2
 Author     : Alek Davis
-Created on : 2019-03-16
+Created on : 2019-04-01
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -573,7 +573,7 @@ $EXITCODE_ERROR_ARCHIVERPATH = 9 # archiver path undefined or file missing
 
 #------------------------------[ FUNCTIONS ]-------------------------------
 
-function GetVersionInfo {
+function GetScriptVersionInfo {
     $notes = $null
     $notes = @{}
 
@@ -616,6 +616,58 @@ function GetVersionInfo {
     }
 
     return $notes
+}
+
+function GetPmsVersion {
+    param (
+        [string]
+        $path
+    )
+
+    if (!$path) {
+        return $null
+    }
+
+    try {
+        if ($path.EndsWith(".exe", [System.StringComparison]::InvariantCultureIgnoreCase)) {
+            return (Get-Item $path).VersionInfo.FileVersion
+        }
+
+        return (Get-Content -Path $path)
+    }
+    catch {
+        LogWarning ("Cannot get Plex Media Server version info from:")
+        LogWarning (Indent $path)
+
+        LogWarning ($_.Exception.Message)
+
+        return $null
+    }
+}
+
+function SavePmsVersion {
+    param (
+        [string]
+        $version,
+        [string]
+        $path
+    )
+
+    if (!$version -or !$path) {
+        return
+    }
+
+    try {
+        $version | Set-Content -Path $path
+    }
+    catch {
+        LogWarning ("Cannot save Plex Media Server version:")
+        LogWarning (Indent $version)
+        LogWarning ("to:")
+        LogWarning (Indent $path)
+
+        LogWarning ($_.Exception.Message)
+    }
 }
 
 function InitConfig {
@@ -1072,7 +1124,7 @@ function PrintVersion {
         $writeToConsole = $true
     )
 
-    $versionInfo = GetVersionInfo
+    $versionInfo = GetScriptVersionInfo
     $scriptName  = (Get-Item $PSCommandPath).Basename
 
     LogMessage ($scriptName +
@@ -3031,6 +3083,31 @@ $success, $plexServerExePath =
     GetPlexMediaServerExePath `
         $PlexServerExePath `
         $PlexServerExeFileName
+
+# If we got PMS path, check PMS version.
+$pmsVersionPath = Join-Path $BackupDirPath "version.txt"
+
+if ($success) {
+    $pmsVersion = GetPmsVersion $plexServerExePath
+
+    if ($Mode -eq "Restore") {
+        $pmsVersionBackup = GetPmsVersion $pmsVersionPath
+
+        if ($pmsVersionBackup) {
+            LogMessage ("Plex Media Server version (BACKUP):")
+            LogMessage (Indent $pmsVersionBackup)
+        }
+    }
+
+    if ($pmsVersion) {
+        LogMessage ("Plex Media Server version (CURRENT):")
+        LogMessage (Indent $pmsVersion)
+
+        if ($Mode -ne "Restore") {
+            SavePmsVersion $pmsVersion $pmsVersionPath
+        }
+    }
+}
 
 # Some variables for email notification message.
 $computerName   = $env:ComputerName
