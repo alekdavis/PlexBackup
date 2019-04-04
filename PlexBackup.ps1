@@ -423,6 +423,7 @@ param (
     [string]
     $BackupDirPath = $null,
 
+    [AllowEmptyString()]
     [string]
     $TempZipFileDir = $env:TEMP,
 
