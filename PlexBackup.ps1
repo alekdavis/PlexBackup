@@ -2750,7 +2750,7 @@ function RobocopyPlexAppData {
         LogError (Indent $LASTEXITCODE)
         LogError "To troubleshoot, execute the following command:"
 
-        LogError ("robocopy" + (((ConvertTo-Json -InputObject $cmdArgs -AsArray -Compress) -replace "[\[\],]"," " ) -replace "\s+"," "))
+        LogError ("robocopy" + (((ConvertTo-Json -InputObject $cmdArgs -Compress) -replace "[\[\],]"," " ) -replace "\s+"," "))
 
         return $false
     }
