@@ -16,10 +16,10 @@ The script can perform two types of backup: compressed (default or `7zip`) and u
 By default, the script compresses every essential folder under the root of the Plex application data folder (`Plex Media Server`) and saves the compressed data as separate ZIP files. For better efficiency (in case the backup folder is remote, such as on a NAS share), it first compresses the data in a temporary local file and then moves the compressed file to a backup folder (you can compress the data and save the ZIP files directly to the backup folder by setting the value of the `TempZipFileDir` parameter to null or empty string). There is a problem with PowerShell's compression routine that fails to process files and folders with paths that are longer than 260 characters. If you get this error, use the `SpecialPlexAppDataSubDirs` parameter (in code or config file) to specify the folders that are too long (or parents of the subfolders or files that are too long) and PlexBackup will copy them as-is without using compression (by default, the following application data folder is not compressed: `Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated`).
 
 #### 7zip
-Instead of the default compression, you can use the [7-zip](https://www.7-zip.org/) command-line tool `7z.exe`). 7-zip works faster (for both compression and extraction) and produces smaller compressed files. To use 7-zip encryption, [install 7-zip](https://www.7-zip.org/download.html), and set the PlexBackup script's `Type` parameter to `7zip` (i.e. `-Type 7zip`) or use the `-SevenZip` shortcut (on command line). If you install 7-zip in a non-default directory, use the `ArchiverPath` parameter to set path to the `7z.exe` file.
+Instead of the default compression, you can use the [7-zip](https://www.7-zip.org/) command-line tool `7z.exe`). 7-zip works faster (for both compression and extraction), it produces smaller compressed files, and it allowes you to exclude specific file types using the `ExcludePlexAppDataFiles` parameter (by default, it excludes `*.bif`, i.e. thumbnail preview files). To use 7-zip encryption, [install 7-zip](https://www.7-zip.org/download.html), and set the PlexBackup script's `Type` parameter to `7zip` (i.e. `-Type 7zip`) or use the `-SevenZip` shortcut (on command line). If you install 7-zip in a non-default directory, use the `ArchiverPath` parameter to set path to the `7z.exe` file.
 
 #### Robocopy
-If you run PlexBackup with the `Robocopy` switch, instead of compression, the script will create a mirror of the Plex application data folder (minus the non-essential folders) using the [Robocopy](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy) command (executed with the `/MIR` switch). 
+If you run PlexBackup with the `Robocopy` switch, instead of compression, the script will create a mirror of the Plex application data folder (minus the non-essential folders) using the [Robocopy](https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/robocopy) command (executed with the `/MIR` switch). Robocopy also allows you to exclude specific file types as [described above](#7zip).
 
 You may want to play with either option to see which one works better for you.
 
@@ -32,7 +32,7 @@ PlexBackup can run in the following modes (specified by the `Mode` switch or a c
 
 If a previous backup does not exist, the `Continue` mode will behave just like the `Backup` mode. When running in the `Continue` mode for backup jobs that use compression, the script will skip the folders that already have the corresponding archive files. For the `Robocopy` backup, the `Continue` mode will syncronize the existing backup archive with the Plex application data files.
 
-In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. After the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process.
+In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. After the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process. The script will not run if the Plex Media Server is not active. To execute the script when Plex Media Server is not running, use the `Inactive` switch, but make sure you know what you are doing. 
 
 ### Plex Windows Registry key
 To make sure PlexBackup saves and restores the right registry key, run it under the same account as Plex Media Server runs. The registry key will be backed up every time a backup job runs. If the backup folder does not contain the backup registry key file, the Plex registry key will not be imported on a restore.
@@ -94,6 +94,8 @@ A config file must use [JSON formatting](https://www.json.org/), such as:
     "ErrorLogAppend": { "value": null  },
     "ErrorLogFile": { "value": null },
     "Shutdown": { "value": null },
+    "Inactive": { "value": null },
+    "Force": { "value": null },
     "SendMail": { "value": false },
     "From": { "value": null },
     "To": { "value": null },
@@ -113,6 +115,8 @@ The `_meta` element describes the file and the file structure. It does not inclu
 - `version`: can be used to handle future file schema changes, and
 - `strictMode`: when set to `true` every config setting that needs to be used must have the `hasValue` attribute set to `true`; if the `strictMode` element is missing or if its value is set to `false`, every config setting that gets validated by the PowerShell's `if` statement will be used.
 
+You may notice that the provided [sample config file](PlexBackup.ps1.SAMPLE.json] looks a bit more complex than the example above. The sample adds a few metadata (`_meta`) elements to make it easier for you to pick from the supported ranges or sets of values (the `_meta` elements serve only informational purposes). The sample also includes a couple of `hasValue` flags. When set to `true`, the `hasValue` flag indicates that the corresponding setting must be used even if its values contains an empty string, null, or false (by default, these values are ignored).
+
 Make sure you use proper JSON formatting (escape characters, etc) when defining the config values (e.g. you must escape each backslash characters with another backslash).
 
 ### Logging
@@ -123,6 +127,9 @@ Use the `ErrorLog` switch to write error messages to a dedicated error log file.
 
 ### Backup snapshots
 Every time you run a new backup job, the script will create a backup snapshot folder. The name of the folder will reflect the timestamp of when the script started. Use the `Keep` switch to specify how many backup snapshots you want to keep: `0` (keep all previously created backups), `1` (keep the current backup snapshot only), `2` (keep the current backup snapshot and one before it), `3` (keep the current backup snapshot and two most recent snapshots), and so on. The default value is `3`.
+
+### Backup version
+When backing up data, PlexBackup records the version of Plex Media Server. If you try to restore a backup on a system with a different version of Plex Media Server, the operation will fail. To to force the operation over a version mismatch, use the `Force` parameter, but be aware that it may pose risks. Keep in mind that if you execute PlexBackup with the Plex Media Server process not running, version information will not be saved or checked during the backup or restore operations.
 
 ### Email notification
 Use the `SendMail` parameter to let PlexBackup know whether or when you want to receive email notifications about the backup job completion using one of the following values:
@@ -193,6 +200,8 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
     [-ErrorLogFile <String>] `
     [-Quiet | -Q] `
     [-Shutdown] `
+    [-Inactive] `
+    [-Force] `
     [-SendMail <String>] `
     [-From <String>] `
     [-To <String>] `
@@ -282,6 +291,14 @@ Set this switch to suppress all log entries sent to the PowerShell console.
 
 Set this switch to not start the Plex Media Server process at the end of the operation. This could be handy for restore operations, so you can double check that all is good before launching Plex Media Server.
 
+`-Inactive`
+
+Set this switch to allow the script to run even when Plex Media Server process is inactive.
+
+`-Force`
+
+Set this switch to allow the restore operation to complete even when the script determines that there is a discrepancy between the current version of Plex Media Server and the version of Plex Media Server instance that was running when the backup was made.
+
 `-SendMail`
 
 Indicates in which case the script must send an email notification about the result of the operation: `Never` (default),
@@ -344,16 +361,17 @@ Common PowerShell parameters (the script is not using these explicitly).
 
 To check whether the backup script executed successfully or encountered an error, check the value of the `$LASTEXITCODE` variable: `0` (zero) indicates success, while any positive number indicates an error. Exit code of `1` implies that the error occurred during the backup or the restore operation. Exit codes higher than `1` indicate that a problem occurred before the script launched a backup or a restore job. You should not need this, but just in case, here is the list of currently supported exit codes:
 
-- `0`: success
-- `1`: error during backup or restore operation
-- `2`: error processing config file
-- `3`: problem determining or setting backup folder
-- `4`: problem with log file(s)
-- `5`: cannot determine path to PMS executable
-- `6`: cannot read Plex Windows services
-- `7`: cannot stop Plex Windows services
-- `8`: cannot stop PMS executable file
-- `9`: path to 7-zip command-line tool is undefined or does not exist
+-  `0`: success
+-  `1`: error during backup or restore operation
+-  `2`: error processing config file
+-  `3`: problem determining or setting backup folder
+-  `4`: problem with log file(s)
+-  `5`: cannot determine path to PMS executable
+-  `6`: cannot read Plex Windows services
+-  `7`: cannot stop Plex Windows services
+-  `8`: cannot stop PMS executable file
+-  `9`: path to 7-zip command-line tool is undefined or does not exist
+- `10`: version mismatch between backup and current Plex Media Server instance
 
 ## Examples
 
