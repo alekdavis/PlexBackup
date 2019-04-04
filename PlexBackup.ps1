@@ -187,6 +187,13 @@ Set this switch to not start the Plex Media Server process at the end of the
 operation (could be handy for restores, so you can double check that all is
 good befaure launching Plex media Server).
 
+.PARAMETER Inactive
+When set, allows the script to continue if Plex Media Server is not running.
+
+.PARAMETER Forces
+Forces restore to ignore version mismatch between the current version of
+Plex Media Server and the version of Plex Media Server active during backup.
+
 .PARAMETER SendMail
 Indicates in which case the script must send an email notification about
 the result of the operation. Values (with explanations): Never (default),
@@ -262,9 +269,9 @@ $env:ProgramFiles\7-Zip\7z.exe.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.5.2
+Version    : 1.5.3
 Author     : Alek Davis
-Created on : 2019-04-01
+Created on : 2019-04-03
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -419,18 +426,21 @@ param (
     [string]
     $TempZipFileDir = $env:TEMP,
 
+    [ValidateRange(0,[int]::MaxValue)]
     [int]
     $Keep = 3,
 
+    [ValidateRange(0,[int]::MaxValue)]
     [int]
     $Retries = 5,
 
+    [ValidateRange(0,[int]::MaxValue)]
     [int]
     $RetryWaitSec = 10,
 
     [Alias("L")]
     [switch]
-    $Log = $false,
+    $Log,
 
     [switch]
     $LogAppend,
@@ -452,7 +462,13 @@ param (
     $Quiet,
 
     [switch]
+    $Inactive,
+
+    [switch]
     $Shutdown,
+
+    [switch]
+    $Force,
 
     [ValidateSet(
         "Never", "Always", "OnError", "OnSuccess",
@@ -470,6 +486,7 @@ param (
     [string]
     $SmtpServer,
 
+    [ValidateRange(0,[int]::MaxValue)]
     [int]
     $Port = 0,
 
@@ -508,7 +525,18 @@ param (
 #-----------------------------[ DECLARATIONS ]-----------------------------
 
 # The following Plex application folders do not need to be backed up.
-$ExcludePlexAppDataDirs = @("Diagnostics", "Crash Reports", "Updates", "Logs")
+$ExcludePlexAppDataDirs = @(
+    "Diagnostics",
+    "Crash Reports",
+    "Updates",
+    "Logs"
+)
+
+# The following file types do not need to be backed up:
+# *.bif - thumbnail previews
+$ExcludePlexAppDataFiles = @(
+    "*.bif"
+)
 
 # Regular expression used to find display names of the Plex Windows service(s).
 $PlexServiceNameMatchString = "^Plex"
@@ -560,24 +588,29 @@ $SpecialPlexAppDataSubDirs =
 
 #------------------------------[ EXIT CODES]-------------------------------
 
-$EXITCODE_SUCCESS            = 0 # success
-$EXITCODE_ERROR              = 1 # error during backup or restore operation
-$EXITCODE_ERROR_CONFIG       = 2 # error processing config file
-$EXITCODE_ERROR_BACKUPDIR    = 3 # problem determining or setting backup folder
-$EXITCODE_ERROR_LOG          = 4 # problem with log file(s)
-$EXITCODE_ERROR_GETPMSEXE    = 5 # cannot determine path to PMS executable
-$EXITCODE_ERROR_GETSERVICES  = 6 # cannot read Plex Windows services
-$EXITCODE_ERROR_STOPSERVICES = 7 # cannot stop Plex Windows services
-$EXITCODE_ERROR_STOPPMSEXE   = 8 # cannot stop PMS executable file
-$EXITCODE_ERROR_ARCHIVERPATH = 9 # archiver path undefined or file missing
+$EXITCODE_SUCCESS               =  0 # success
+$EXITCODE_ERROR                 =  1 # error during backup or restore operation
+$EXITCODE_ERROR_CONFIG          =  2 # error processing config file
+$EXITCODE_ERROR_BACKUPDIR       =  3 # problem determining or setting backup folder
+$EXITCODE_ERROR_LOG             =  4 # problem with log file(s)
+$EXITCODE_ERROR_GETPMSEXE       =  5 # cannot determine path to PMS executable
+$EXITCODE_ERROR_GETSERVICES     =  6 # cannot read Plex Windows services
+$EXITCODE_ERROR_STOPSERVICES    =  7 # cannot stop Plex Windows services
+$EXITCODE_ERROR_STOPPMSEXE      =  8 # cannot stop PMS executable file
+$EXITCODE_ERROR_ARCHIVERPATH    =  9 # archiver path undefined or file missing
+$EXITCODE_ERROR_VERSIONMISMATCH = 10 # archiver path undefined or file missing
 
 #------------------------------[ FUNCTIONS ]-------------------------------
 
+#--------------------------------------------------------------------------
+# GetScriptVersionInfo
+#   Returns this script's version information defined in the .NOTES comment
+#   header at the top of the script.
 function GetScriptVersionInfo {
     $notes = $null
     $notes = @{}
 
-    # Get the .NOTES section of the script header comment.
+    # Get the .NOTES section from the script header comment.
     $notesText = (Get-Help -Full $PSCommandPath).alertSet.alert.Text
 
     # Split the .NOTES section by lines.
@@ -618,21 +651,28 @@ function GetScriptVersionInfo {
     return $notes
 }
 
+#--------------------------------------------------------------------------
+# GetPmsVersion
+#   Returns either:
+#   - file version of the current Plex Media Server executable, or
+#   - version of the last saved backup (from the backup.txt file)
 function GetPmsVersion {
     param (
         [string]
         $path
     )
 
-    if (!$path) {
+    if ((!$path) -or (!(Test-Path -Path $path -PathType Leaf))) {
         return $null
     }
 
     try {
+        # For EXE file, get version info from the assembly.
         if ($path.EndsWith(".exe", [System.StringComparison]::InvariantCultureIgnoreCase)) {
             return (Get-Item $path).VersionInfo.FileVersion
         }
 
+        # Assume that this is a previous backup's version.txt file.
         return (Get-Content -Path $path)
     }
     catch {
@@ -645,6 +685,10 @@ function GetPmsVersion {
     }
 }
 
+#--------------------------------------------------------------------------
+# SavePmsVersion
+#   Saves current file version of the Plex Media Server executable to
+#   the backup.txt file.
 function SavePmsVersion {
     param (
         [string]
@@ -670,6 +714,9 @@ function SavePmsVersion {
     }
 }
 
+#--------------------------------------------------------------------------
+# InitConfig
+#   Initializes runtime parameters from the script's config file settings.
 function InitConfig {
 
     # If config file is specified, check if it exists.
@@ -728,6 +775,10 @@ function InitConfig {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# ConvertJsonStringToObject
+#   Returns a hashtable holding initialized settings retrieved from the
+#   script's config file.
 function ConvertJsonStringToObject {
     param (
         [string]
@@ -744,8 +795,9 @@ function ConvertJsonStringToObject {
 
     $jsonObject.PSObject.Properties | ForEach-Object {
 
-        # 'return' here acts as 'continue' in loops.
+        # In ForEach-Object loops 'return' acts as 'continue' in simple loops.
         if ($_.Name.StartsWith("_")) {
+            # Skip to next (yes, 'return' is the right statement here).
             return
         }
 
@@ -782,6 +834,9 @@ function ConvertJsonStringToObject {
     return $hash
 }
 
+#--------------------------------------------------------------------------
+# Indent
+#   Adds indents in front of the text string.
 function Indent {
     param (
         [string]
@@ -806,6 +861,9 @@ function Indent {
     return $message
 }
 
+#--------------------------------------------------------------------------
+# Log
+#   Writes a message to the script's console window or a text file.
 function Log {
     param (
         [string]
@@ -847,6 +905,12 @@ function Log {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# LogException
+#   Writes exception info to one or more of the following:
+#   - active console window
+#   - script's log file
+#   - script's error log file
 function LogException {
     param (
         [object]
@@ -857,20 +921,24 @@ function LogException {
         $writeToErrorLog = $true
     )
 
+    # Do not write to console in the quiet mode.
     if (!$script:Quiet) {
          Write-Error $ex -ErrorAction Continue
     }
 
+    # Write to log file if settings align.
     if ($writeToLog -and $script:Log -and $script:LogFile) {
         try {
             Out-File -FilePath $script:LogFile -Append -Encoding utf8 -InputObject $ex
         }
         catch {
-            # There was a problem writing to a file, so don't use log file.
+            # There was a problem writing to the log file, so don't use the log
+            # file from this point on.
             $script:Log     = $false
             $script:LogFile = $null
 
             try {
+                # Log error that we failed to write to the log file.
                 LogException $_ $false $writeToErrorLog
             }
             catch {
@@ -880,16 +948,19 @@ function LogException {
         }
     }
 
+    # Write to error log file if settings align.
     if ($writeToErrorLog -and $script:ErrorLog -and $script:ErrorLogFile) {
         try {
             Out-File -FilePath $script:ErrorLogFile -Append -Encoding utf8 -InputObject $ex
         }
         catch {
-            # There was a problem writing to a file, so don't use log file.
+            # There was a problem writing to the error log file, so don't use the error log
+            # file from this point on.
             $script:ErrorLog     = $false
             $script:ErrorLogFile = $null
 
             try {
+                # Log error that we failed to write to the error log file.
                 LogException $_ $writeToLog $false
             }
             catch {
@@ -900,6 +971,12 @@ function LogException {
     }
 }
 
+#--------------------------------------------------------------------------
+# LogException
+#   Writes an error message to one or more of the following:
+#   - active console window
+#   - script's log file
+#   - script's error log file
 function LogError {
     param (
         [string]
@@ -910,7 +987,7 @@ function LogError {
         $writeToErrorLog = $true
     )
 
-    # Send message to console.
+    # Send message to console (unless the script is running in the quiet mode).
     if (!$script:Quiet) {
         (Log $message $null Red) | Out-Null
     }
@@ -932,6 +1009,11 @@ function LogError {
     }
 }
 
+#--------------------------------------------------------------------------
+# LogWarning
+#   Writes a warning message to one or more of the following:
+#   - active console window
+#   - script's log file
 function LogWarning {
     param (
         [string]
@@ -959,6 +1041,11 @@ function LogWarning {
     }
 }
 
+#--------------------------------------------------------------------------
+# LogMessage
+#   Writes an informational message to one or more of the following:
+#   - active console window
+#   - script's log file
 function LogMessage {
     param (
         [string]
@@ -985,6 +1072,9 @@ function LogMessage {
     }
 }
 
+#--------------------------------------------------------------------------
+# InitMode
+#   Initializes script execution mode.
 function InitMode {
     if (!$script:Mode) {
         if ($script:Backup) {
@@ -1002,6 +1092,9 @@ function InitMode {
     }
 }
 
+#--------------------------------------------------------------------------
+# InitType
+#   Initializes backup type.
 function InitType {
     if (!$script:Type) {
         if ($script:Robocopy) {
@@ -1012,28 +1105,39 @@ function InitType {
         }
     }
 
+    # For 7-zip archival, change default '.zip' extension to '.7z'.
     if ($script:Type -eq "7zip") {
         $script:ZipFileExt = $script:7ZipFileExt
     }
 }
 
+#--------------------------------------------------------------------------
+# InitBackupRootDir
+#   Initializes the path to the backup root folder.
 function InitBackupRootDir {
+    # If it was specified, use as is.
     if ($script:BackupRootDir) {
         return
     }
 
+    # If backup folder is specified, use its parent as the root.
     if ($script:BackupDirPath) {
         $script:BackupRootDir = Split-Path -Path $script:BackupDirPath -Parent
     }
+    # Use script's folder as the root.
     else {
         $script:BackupRootDir = Split-Path -Path $PSCommandPath -Parent
     }
 }
 
+#--------------------------------------------------------------------------
+# InitLog
+#   Initializes log settings.
 function InitLog {
     if ($script:LogFile) {
         $script:Log = $true
     }
+
     if ($script:ErrorLogFile) {
         $script:ErrorLog = $true
     }
@@ -1043,13 +1147,13 @@ function InitLog {
     }
 
     if (!$script:LogFile) {
-        $logFileName = (Split-Path -Path $PSCommandPath -Leaf) + ".log"
+        $logFileName = "$script:Mode.log"
 
         $script:LogFile = Join-Path $script:BackupDirPath $logFileName
     }
 
     if (!$script:ErrorLogFile) {
-        $errorLogFileName = (Split-Path -Path $PSCommandpath -Leaf) + ".err.log"
+        $errorLogFileName = "$script:Mode.err.log"
 
         $script:ErrorLogFile = Join-Path $script:BackupDirPath $errorLogFileName
     }
@@ -1116,6 +1220,9 @@ function InitLog {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# PrintVersion
+#   Prints script version info to the console and/or the log file.
 function PrintVersion {
     param (
         [bool]
@@ -1132,12 +1239,18 @@ function PrintVersion {
         " " + $versionInfo["Copyright"]) $writeToFile $writeToConsole
 }
 
+#--------------------------------------------------------------------------
+# InitMailSettings
+#   Initializes email settings.
 function InitMailSetting {
     if (!$script:smtpServer) {
         $script:SendMail = "Never"
     }
 }
 
+#--------------------------------------------------------------------------
+# InitCredentialFileName
+#   Initializes SMTP credential file path.
 function InitCredentialFileName {
     if (!$script:SendMail -or ($script:SendMail -eq "Never")) {
         return
@@ -1152,6 +1265,10 @@ function InitCredentialFileName {
     }
 }
 
+#--------------------------------------------------------------------------
+# GetCredential
+#   Gets SMTP credentials from the credential file or an interactive prompt.
+#   Will also store credential info in the credential file (optional).
 function GetCredential {
     param (
         [string]
@@ -1241,6 +1358,10 @@ function GetCredential {
     return $credential
 }
 
+#--------------------------------------------------------------------------
+# MustSendAttachment
+#   Returns 'true' if conditions for sending the log file as an attachment
+#   are met; returns 'false' otherwise.
 function MustSendAttachment {
     param (
         [string]
@@ -1278,6 +1399,10 @@ function MustSendAttachment {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# MustSendMail
+#   Returns 'true' if conditions for sending email notification about the
+#   operation result are met; returns 'false' otherwise.
 function MustSendMail {
     param (
         [string]
@@ -1346,6 +1471,9 @@ function MustSendMail {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# SendMail
+#   Sends email notification with the information about the operation result.
 function SendMail {
     param (
         [string]
@@ -1409,6 +1537,9 @@ function SendMail {
     }
 }
 
+#--------------------------------------------------------------------------
+# FormatEmail
+#   Formats HTML body for the notification email.
 function FormatEmail {
     param (
         [string]
@@ -1532,10 +1663,17 @@ function FormatEmail {
     return $body
 }
 
+#--------------------------------------------------------------------------
+# GetTimestamp
+#   Returns current timestamp in a consistent format.
 function GetTimestamp {
     return $(Get-Date).ToString("yyyy/MM/dd HH:mm:ss.fff")
 }
 
+#--------------------------------------------------------------------------
+# WakeUpDir
+#   Attempts to wake a remote host just in case if the backup folder is
+#   hosted on a remote share (pseudo Wake-onLAN command).
 function WakeUpDir {
     param (
         [string]
@@ -1560,6 +1698,9 @@ function WakeUpDir {
     }
 }
 
+#--------------------------------------------------------------------------
+# GetLastBackupDirPath
+#   Returns the path of the most recent backup folder.
 function GetLastBackupDirPath {
     param (
         [string]
@@ -1600,6 +1741,10 @@ function GetLastBackupDirPath {
     return $oldBackupDirs[0].FullName
 }
 
+#--------------------------------------------------------------------------
+# GetNewBackupDirName
+#   Generates the new name of the backup subfolder based on the current
+#   timestamp in the format: YYYYMMDDhhmmss.
 function GetNewBackupDirName {
     param (
         [string]
@@ -1615,6 +1760,11 @@ function GetNewBackupDirName {
     return ($date).ToString($backupDirNameFormat)
 }
 
+#--------------------------------------------------------------------------
+# GetBackupDirNameAndPath
+#   Returns name and path of the backup directory that will be used for the
+#   running backup job (it can be an existing or a new directory depending
+#   on the backup mode).
 function GetBackupDirNameAndPath {
     param (
         [string]
@@ -1658,12 +1808,17 @@ function GetBackupDirNameAndPath {
     return $backupDirName, (Join-Path $backupRootDir $backupDirName)
 }
 
+#--------------------------------------------------------------------------
+# GetPlexMediaServerExePath
+#   Returns the path of the running Plex Media Server executable.
 function GetPlexMediaServerExePath {
     param (
         [string]
         $path,
         [string]
-        $name
+        $name,
+        [bool]
+        $inactive
     )
 
     # Get path of the Plex Media Server executable.
@@ -1675,10 +1830,18 @@ function GetPlexMediaServerExePath {
 
     # Make sure we got the Plex Media Server executable file path.
     if (!$path) {
-        LogError "Cannot determine path of the the Plex Media Server executable file."
-        LogError "Please make sure Plex Media Server is running."
+        if ($inactive) {
+            LogWarning "Cannot determine path of the the Plex Media Server executable file."
+            LogWarning "Plex Media Server is not running."
 
-        return $false, $null
+            return $true, $null
+        }
+        else {
+            LogError "Cannot determine path of the the Plex Media Server executable file."
+            LogError "Please make sure Plex Media Server is running."
+
+            return $false, $null
+        }
     }
 
     # Verify that the Plex Media Server executable file exists.
@@ -1692,6 +1855,9 @@ function GetPlexMediaServerExePath {
     return $true, $path
 }
 
+#--------------------------------------------------------------------------
+# GetRunningPlexServices
+#   Returns the list of Plex Windows services (identified by display names).
 function GetRunningPlexServices {
     param (
         [string]
@@ -1703,6 +1869,9 @@ function GetRunningPlexServices {
             Where-Object {$_.status -eq 'Running'}
 }
 
+#--------------------------------------------------------------------------
+# StopPlexServices
+#   Stops running Plex Windows services.
 function StopPlexServices {
     param (
         [object[]]
@@ -1727,7 +1896,6 @@ function StopPlexServices {
                 return $false, $stoppedPlexServices
             }
 
-
             ($stoppedPlexServices.Add($service)) | Out-Null
         }
     }
@@ -1735,6 +1903,9 @@ function StopPlexServices {
     return $true, $stoppedPlexServices
 }
 
+#--------------------------------------------------------------------------
+# StartPlexServices
+#   Starts Plex Windows services.
 function StartPlexServices {
     param (
         [object[]]
@@ -1765,6 +1936,9 @@ function StartPlexServices {
     }
 }
 
+#--------------------------------------------------------------------------
+# StopPlexMediaServer
+#   Stops a running instance of Plex Media Server.
 function StopPlexMediaServer {
     param (
         [string]
@@ -1806,6 +1980,9 @@ function StopPlexMediaServer {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# StartPlexMediaServer
+#   Launches Plex Media Server.
 function StartPlexMediaServer {
     param (
         [string]
@@ -1835,6 +2012,9 @@ function StartPlexMediaServer {
     }
 }
 
+#--------------------------------------------------------------------------
+# CopyFolder
+#   Copies contents of a folder using a ROBOCOPY command.
 function CopyFolder {
     param (
         [string]
@@ -1882,6 +2062,9 @@ function CopyFolder {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# MoveFolder
+#   Moves contents of a folder using a ROBOCOPY command.
 function MoveFolder {
     param (
         [string]
@@ -1929,6 +2112,13 @@ function MoveFolder {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# BackupSpecialSubDirs
+#   Moves contents of the special Plex app data folders to special backup
+#   folder to exclude them from the backup compression job, so that they
+#   could be copied separately (because special directories have long names,
+#   they can break archival process used by PowerShell's Compress-Archive
+#   command).
 function BackupSpecialSubDirs {
     param (
         [string[]]
@@ -1958,6 +2148,10 @@ function BackupSpecialSubDirs {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# RestoreSpecialSubDirs
+#   Copies backed up special Plex app data folders back to their original
+#   locations (see also BackupSpecialSubDirs).
 function RestoreSpecialSubDirs {
     param (
         [string[]]
@@ -1987,6 +2181,10 @@ function RestoreSpecialSubDirs {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# DecompressPlexAppDataFolder
+#   Restores a Plex app data folder from the corresponding compressed
+#   backup file.
 function DecompressPlexAppDataFolder {
     param (
         [string]
@@ -2013,9 +2211,9 @@ function DecompressPlexAppDataFolder {
 
     # If we have a temp folder, stage the extracting job.
     if ($tempZipFileDir) {
-        $tempZipFileName= (New-Guid).Guid + $zipFileExt
+        $tempZipFileName = "PlexBackup-" + (New-Guid).Guid + $zipFileExt
 
-        $tempZipFilePath= Join-Path $tempZipFileDir $tempZipFileName
+        $tempZipFilePath = Join-Path $tempZipFileDir $tempZipFileName
 
         # Copy backup archive to a temp zip file.
         LogMessage "Copying backup archive file:"
@@ -2113,6 +2311,9 @@ function DecompressPlexAppDataFolder {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# DecompressPlexAppData
+#   Restores Plex app data folders from the compressed backup files.
 function DecompressPlexAppData {
     param (
         [string]
@@ -2135,11 +2336,12 @@ function DecompressPlexAppData {
         $archiverPath
     )
 
-    # Build path to the ZIP file that holds files from Plex app data folder.
+    # Build path to the ZIP file that holds files from the root Plex app data folder.
     $zipFileName = $backupFileName + $zipFileExt
     $zipFileDir  = Join-Path $backupDirPath $subDirFiles
     $zipFilePath = Join-Path $zipFileDir $zipFileName
 
+    # Restore files in the root Plex app data folder.
     if (Test-Path -Path $zipFilePath -PathType Leaf) {
         LogMessage "Restoring Plex app data files from:"
         LogMessage (Indent $zipFilePath)
@@ -2177,6 +2379,7 @@ function DecompressPlexAppData {
         (Join-Path $backupDirPath $subDirFolders) -File  |
             Where-Object { $_.Extension -eq $zipFileExt }
 
+    # Restore each Plex app data subfolder from the corresponding backup archive file.
     foreach ($backupZipFile in $backupZipFiles) {
         if (!(DecompressPlexAppDataFolder `
                 $type `
@@ -2193,6 +2396,9 @@ function DecompressPlexAppData {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# CompressPlexAppDataFolder
+#   Backs up contents of a Plex app data subfolder to a compressed file.
 function CompressPlexAppDataFolder {
     param (
         [string]
@@ -2201,6 +2407,8 @@ function CompressPlexAppDataFolder {
         $type,
         [object]
         $sourceDir,
+        [string[]]
+        $excludeFiles,
         [string]
         $backupDirPath,
         [string]
@@ -2222,10 +2430,11 @@ function CompressPlexAppDataFolder {
         return $true
     }
 
+    # If a staged temp folder is specified (instead of compressing over network)...
     if ($tempZipFileDir) {
-        $tempZipFileName= (New-Guid).Guid + $zipFileExt
+        $tempZipFileName = "PlexBackup-" + (New-Guid).Guid + $zipFileExt
 
-        $tempZipFilePath= Join-Path $tempZipFileDir $tempZipFileName
+        $tempZipFilePath = Join-Path $tempZipFileDir $tempZipFileName
 
         LogMessage "Archiving:"
         LogMessage (Indent $sourceDir.FullName)
@@ -2236,7 +2445,13 @@ function CompressPlexAppDataFolder {
 
         try {
             if ($type -eq "7zip") {
-                & $archiverPath a "$tempZipFilePath" (Join-Path $sourceDir.FullName "*") -r
+                [Array]$cmdArgs = "a", "$tempZipFilePath", (Join-Path $sourceDir.FullName "*"), "-r"
+
+                foreach ($excludeFile in $excludeFiles) {
+                    $cmdArgs += "-x!$excludeFile"
+                }
+
+                & $archiverPath @cmdArgs
 
                 if ($LASTEXITCODE -gt 0) {
                     throw ("7-zip returned: " + $LASTEXITCODE)
@@ -2305,7 +2520,13 @@ function CompressPlexAppDataFolder {
 
         try {
             if ($type -eq "7zip") {
-                & $archiverPath a "$backupZipFilePath" (Join-Path $sourceDir.FullName "*") -r
+                [Array]$cmdArgs = "a", "$backupZipFilePath", (Join-Path $sourceDir.FullName "*"), "-r"
+
+                foreach ($excludeFile in $excludeFiles) {
+                    $cmdArgs += "-x!$excludeFile"
+                }
+
+                & $archiverPath @cmdArgs
 
                 if ($LASTEXITCODE -gt 0) {
                     throw ("7-zip returned: " + $LASTEXITCODE)
@@ -2338,77 +2559,9 @@ function CompressPlexAppDataFolder {
     return $true
 }
 
-function RobocopyPlexAppData {
-    param (
-        [string]
-        $source,
-        [string]
-        $destination,
-        [string[]]
-        $excludeDirs,
-        [int]
-        $retries,
-        [int]
-        $retryWaitSec
-    )
-
-    LogMessage "Copying Plex app data files from:"
-    LogMessage (Indent $source)
-    LogMessage "to:"
-    LogMessage (Indent $destination)
-    LogMessage "at:"
-    LogMessage (Indent (GetTimestamp))
-
-    LogWarning "THIS OPERATION IS LONG: IT MAY TAKE HOURS."
-    LogWarning "THERE WILL BE NO FEEDBACK UNLESS SOMETHING GOES WRONG."
-    LogWarning "IF YOU GET WORRIED, USE TASK MANAGER TO CHECK CPU/DISK USAGE."
-    LogWarning "OTHERWISE, TAKE A BREAK AND COME BACK LATER."
-    LogMessage "Robocopy is running quietly..."
-
-    # Build full paths to the excluded folders.
-    $excludePaths = $null
-
-    try {
-        if (($excludeDirs) -and ($excludeDirs.Count -gt 0)) {
-            $excludePaths = [System.Collections.ArrayList]@()
-
-            foreach ($excludeDir in $excludeDirs) {
-                ($excludePaths.Add((Join-Path $source $excludeDir))) | Out-Null
-            }
-
-            robocopy $source $destination /MIR /R:$retries /W:$retryWaitSec /MT /XD $excludePaths
-        }
-        else {
-            robocopy $source $destination /MIR /R:$retries /W:$retryWaitSec /MT
-        }
-    }
-    catch {
-        LogException $_
-
-        return $false
-    }
-
-    if ($LASTEXITCODE -gt 7) {
-        LogError "Robocopy failed with error code:"
-        LogError (Indent $LASTEXITCODE)
-        LogError "To troubleshoot, execute the following command:"
-
-        if (($excludePaths) -and ($excludePaths.Count -gt 0)) {
-            LogError "robocopy $source $destination /MIR /R:$retries /W:$retryWaitSec /MT /XD $excludePaths"
-        }
-        else {
-            LogError "robocopy $source $destination /MIR /R:$retries /W:$retryWaitSec /MT"
-        }
-
-        return $false
-    }
-
-    LogMessage "Completed at:"
-    LogMessage (Indent (GetTimestamp))
-
-    return $true
-}
-
+#--------------------------------------------------------------------------
+# CompressPlexAppData
+#   Backs up contents of the Plex app data folder to the compressed files.
 function CompressPlexAppData {
     param (
         [string]
@@ -2419,6 +2572,8 @@ function CompressPlexAppData {
         $plexAppDataDir,
         [string[]]
         $excludePlexAppDataDirs,
+        [string[]]
+        $excludePlexAppDataFiles,
         [string]
         $backupDirPath,
         [string]
@@ -2459,15 +2614,21 @@ function CompressPlexAppData {
         else {
             try {
                 if ($type -eq "7zip") {
-                    & $archiverPath a "$zipFilePath" (Get-ChildItem (Join-Path $plexAppDataDir "*") -File)
+
+                    [Array]$cmdArgs = "a", "$zipFilePath"
+
+                    foreach ($excludeFile in $excludeFiles) {
+                        $cmdArgs += "-x!$excludeFile"
+                    }
+
+                    & $archiverPath @cmdArgs (Get-ChildItem (Join-Path $plexAppDataDir "*") -File)
 
                     if ($LASTEXITCODE -gt 0) {
                         throw ("7-zip returned: " + $LASTEXITCODE)
                     }
                 }
                 else {
-                    Get-ChildItem -File $plexAppDataDir |
-                        Compress-Archive -DestinationPath $zipFilePath -Update
+                    Get-ChildItem -Path $plexAppDataDir -File | Compress-Archive -DestinationPath $zipFilePath -Update
                 }
             }
             catch {
@@ -2499,6 +2660,7 @@ function CompressPlexAppData {
                 $mode `
                 $type `
                 $plexAppDataSubDir `
+                $excludePlexAppDataFiles `
                 (Join-Path $backupDirPath $subDirFolders) `
                 $tempZipFileDir `
                 $zipFileExt `
@@ -2510,6 +2672,97 @@ function CompressPlexAppData {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# RobocopyPlexAppData
+#   Copies the Plex app data folder using the Windows 'robocopy' tool.
+function RobocopyPlexAppData {
+    param (
+        [string]
+        $source,
+        [string]
+        $destination,
+        [string[]]
+        $excludeDirs,
+        [string[]]
+        $excludeFiles,
+        [int]
+        $retries,
+        [int]
+        $retryWaitSec
+    )
+
+    LogMessage "Copying Plex app data files from:"
+    LogMessage (Indent $source)
+    LogMessage "to:"
+    LogMessage (Indent $destination)
+    LogMessage "at:"
+    LogMessage (Indent (GetTimestamp))
+
+    LogWarning "THIS OPERATION IS LONG: IT MAY TAKE HOURS."
+    LogWarning "THERE WILL BE NO FEEDBACK UNLESS SOMETHING GOES WRONG."
+    LogWarning "IF YOU GET WORRIED, USE TASK MANAGER TO CHECK CPU/DISK USAGE."
+    LogWarning "OTHERWISE, TAKE A BREAK AND COME BACK LATER."
+    LogMessage "Robocopy is running quietly..."
+
+    # Build full paths to the excluded folders.
+    $excludePaths = $null
+
+    $cmdArgs = [System.Collections.ArrayList]@(
+        "$source",
+        "$destination",
+        "/MIR",
+        "/R:$retries",
+        "/W:$retryWaitSec",
+        "/MT"
+    )
+
+    try {
+        # Set directories to exclude from backup.
+        if (($excludeDirs) -and ($excludeDirs.Count -gt 0)) {
+            $excludePaths = [System.Collections.ArrayList]@()
+
+            # We need to use full paths.
+            foreach ($excludeDir in $excludeDirs) {
+                ($excludePaths.Add((Join-Path $source $excludeDir))) | Out-Null
+            }
+
+            $cmdArgs.Add("/XD")
+            $cmdArgs.Add($excludePaths)
+        }
+
+        # Set file types to exclude (e.g. '*.bif').
+        if (($excludeFiles) -and ($excludeFiles.Count -gt 0)) {
+            $cmdArgs.Add("/XF")
+            $cmdArgs.Add($excludeFiles)
+        }
+
+        robocopy @cmdArgs
+    }
+    catch {
+        LogException $_
+
+        return $false
+    }
+
+    if ($LASTEXITCODE -gt 7) {
+        LogError "Robocopy failed with error code:"
+        LogError (Indent $LASTEXITCODE)
+        LogError "To troubleshoot, execute the following command:"
+
+        LogError ("robocopy" + (((ConvertTo-Json -InputObject $cmdArgs -AsArray -Compress) -replace "[\[\],]"," " ) -replace "\s+"," "))
+
+        return $false
+    }
+
+    LogMessage "Completed at:"
+    LogMessage (Indent (GetTimestamp))
+
+    return $true
+}
+
+#--------------------------------------------------------------------------
+# RestorePlexFromBackup
+#   Restores Plex app data and registry key from a backup.
 function RestorePlexFromBackup {
     param (
         [string]
@@ -2655,6 +2908,9 @@ function RestorePlexFromBackup {
     return $true
 }
 
+#--------------------------------------------------------------------------
+# CreatePlexBackup
+#   Creates a backup for the Plex app data folder and registry key.
 function CreatePlexBackup {
     param (
         [string]
@@ -2673,6 +2929,8 @@ function CreatePlexBackup {
         $tempZipFileDir,
         [string[]]
         $excludePlexAppDataDirs,
+        [string[]]
+        $excludePlexAppDataFiles,
         [string[]]
         $specialPlexAppDataSubDirs,
         [int]
@@ -2842,6 +3100,7 @@ function CreatePlexBackup {
                 $plexAppDataDir `
                 (Join-Path $backupDirPath $subDirFiles) `
                 $excludePlexAppDataDirs `
+                $excludePlexAppDataFiles `
                 $retries `
                 $retryWaitSec)) {
             return $false
@@ -2867,6 +3126,7 @@ function CreatePlexBackup {
                 $type `
                 $plexAppDataDir `
                 $excludePlexAppDataDirs `
+                $excludePlexAppDataFiles `
                 $backupDirPath `
                 $tempZipFileDir `
                 $backupFileName `
@@ -2969,6 +3229,8 @@ if ($Type -eq "7zip") {
 InitBackupRootDir
 InitMailSetting
 
+# In case we are backing up to a remote system (NAS, etc), let's wake it up
+# (in case it is sleeping).
 WakeUpDir $BackupRootDir
 
 # Get the name and path of the backup directory.
@@ -3017,11 +3279,13 @@ if (!$From) {
         $SendMail = "Never"
     }
 }
+
+# If the 'To' address is not specified, use the 'From' address.
 if (!$To) {
     $To = $From
 }
 
-# Okay, at this point we are ready to roll.
+# At this point, we are ready to roll.
 
 # Print messages that we already sent to console to the log file.
 if ((!$Quiet) -and (!$NoLogo)) {
@@ -3082,32 +3346,8 @@ if ($LogFile -and (Test-Path -Path $LogFile -PathType Leaf)) {
 $success, $plexServerExePath =
     GetPlexMediaServerExePath `
         $PlexServerExePath `
-        $PlexServerExeFileName
-
-# If we got PMS path, check PMS version.
-$pmsVersionPath = Join-Path $BackupDirPath "version.txt"
-
-if ($success) {
-    $pmsVersion = GetPmsVersion $plexServerExePath
-
-    if ($Mode -eq "Restore") {
-        $pmsVersionBackup = GetPmsVersion $pmsVersionPath
-
-        if ($pmsVersionBackup) {
-            LogMessage ("Plex Media Server version (BACKUP):")
-            LogMessage (Indent $pmsVersionBackup)
-        }
-    }
-
-    if ($pmsVersion) {
-        LogMessage ("Plex Media Server version (CURRENT):")
-        LogMessage (Indent $pmsVersion)
-
-        if ($Mode -ne "Restore") {
-            SavePmsVersion $pmsVersion $pmsVersionPath
-        }
-    }
-}
+        $PlexServerExeFileName `
+        $Inactive
 
 # Some variables for email notification message.
 $computerName   = $env:ComputerName
@@ -3117,11 +3357,79 @@ $subjectError   = "Plex backup failed :-("
 $subjectSuccess = "Plex backup completed :-)"
 $backupMode     = $null
 
+# This one is for the email notification.
 if ($Type) {
     $backupMode = $Mode.ToUpper() + " -" + $Type.ToUpper()
 }
 else {
     $backupMode = $Mode.ToUpper()
+}
+
+# If we got Plex Media Server (PMS) path, check its version.
+$pmsVersionPath = Join-Path $BackupDirPath "version.txt"
+
+if ($success) {
+    $pmsVersion = GetPmsVersion $PlexServerExePath
+
+    if ($pmsVersion) {
+        $pmsVersion = $pmsVersion.Trim()
+
+        LogMessage ("Plex Media Server version (CURRENT):")
+        LogMessage (Indent $pmsVersion)
+
+        if ($Mode -ne "Restore") {
+            SavePmsVersion $pmsVersion $pmsVersionPath
+        }
+    }
+
+    if ($Mode -eq "Restore") {
+        $pmsVersionBackup = GetPmsVersion $pmsVersionPath
+
+        if ($pmsVersionBackup) {
+            $pmsVersionBackup = $pmsVersionBackup.Trim()
+
+            LogMessage ("Plex Media Server version (BACKUP):")
+            LogMessage (Indent $pmsVersionBackup)
+
+            if ($pmsVersion -and ($pmsVersion -ne $pmsVersionBackup)) {
+                if (!$Force) {
+
+                    LogError ("Backup version:")
+                    LogError (Indent $pmsVersionBackup)
+                    LogError ("does not match the current version of Plex Media Server:")
+                    LogError (Indent $pmsVersion)
+                    LogError ("To ignore version check, run the script with the '-Force' flag.")
+
+                    if (MustSendMail $SendMail $Mode $success) {
+                        $mailBody = FormatEmail `
+                            $computerName `
+                            $scriptPath `
+                            $backupMode `
+                            $BackupDirPath `
+                            $startTime `
+                            (Get-Date) `
+                            $success `
+                            "Backup version '$pmsVersionBackup' does not match the current version of Plex Media Server '$pmsVersion'."
+
+                        if ($mailBody) {
+                            SendMail `
+                                $From `
+                                $To `
+                                $subjectError `
+                                $mailBody `
+                                $attachment `
+                                $SmtpServer `
+                                $Port `
+                                $credential `
+                                $UseSsl
+                        }
+                    }
+
+                    exit $EXITCODE_ERROR_VERSIONMISMATCH
+                }
+            }
+        }
+    }
 }
 
 # Check if we could determine the path to the PMS EXE.
@@ -3223,35 +3531,37 @@ if (!$success) {
 }
 
 # Stop Plex Media Server executable (if it's still running).
-if (!(StopPlexMediaServer $plexServerExeFileName $PlexServerExePath)) {
-    StartPlexServices $plexServices
+if ($PlexServerExePath) {
+    if (!(StopPlexMediaServer $plexServerExeFileName $PlexServerExePath)) {
+        StartPlexServices $plexServices
 
-    if (MustSendMail $SendMail $Mode $success) {
-        $mailBody = FormatEmail `
-            $computerName `
-            $scriptPath `
-            $backupMode `
-            $BackupDirPath `
-            $startTime `
-            (Get-Date) `
-            $success `
-            "Cannot stop Plex Media Server."
+        if (MustSendMail $SendMail $Mode $success) {
+            $mailBody = FormatEmail `
+                $computerName `
+                $scriptPath `
+                $backupMode `
+                $BackupDirPath `
+                $startTime `
+                (Get-Date) `
+                $success `
+                "Cannot stop Plex Media Server."
 
-        if ($mailBody) {
-            SendMail `
-                $From `
-                $To `
-                $subjectError `
-                $mailBody `
-                $attachment `
-                $SmtpServer `
-                $Port `
-                $credential `
-                $UseSsl
+            if ($mailBody) {
+                SendMail `
+                    $From `
+                    $To `
+                    $subjectError `
+                    $mailBody `
+                    $attachment `
+                    $SmtpServer `
+                    $Port `
+                    $credential `
+                    $UseSsl
+            }
         }
-    }
 
-    exit $EXITCODE_ERROR_STOPPMSEXE
+        exit $EXITCODE_ERROR_STOPPMSEXE
+    }
 }
 
 # Restore Plex app data from backup.
@@ -3280,6 +3590,11 @@ if ($Mode -eq "Restore") {
 }
 # Back up Plex app data.
 else {
+    if (!$Type -and $ExcludePlexAppDataFiles -and $ExcludePlexAppDataFiles.Count -gt 0) {
+        LogWarning ("Ignoring script parameter:")
+        LogWarning (Indent "ExcludePlexAppDataFiles")
+    }
+
     $success = CreatePlexBackup `
         $Mode `
         $PlexAppDataDir `
@@ -3289,6 +3604,7 @@ else {
         $BackupdDirPath `
         $TempZipFileDir `
         $ExcludePlexAppDataDirs `
+        $ExcludePlexAppDataFiles `
         $SpecialPlexAppDataSubDirs `
         $Keep `
         $RegexBackupDirNameFormat `
@@ -3310,7 +3626,7 @@ else {
 StartPlexServices $plexServices
 
 # Start Plex Media Server (if it's not running).
-if (!($Shutdown)) {
+if ((!$Shutdown) -and $PlexServerExePath) {
     StartPlexMediaServer $plexServerExeFileName $PlexServerExePath
 }
 
@@ -3380,3 +3696,6 @@ if ($success) {
 else {
     exit $EXITCODE_ERROR
 }
+
+# THE END
+#--------------------------------------------------------------------------
