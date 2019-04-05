@@ -115,7 +115,7 @@ The `_meta` element describes the file and the file structure. It does not inclu
 - `version`: can be used to handle future file schema changes, and
 - `strictMode`: when set to `true` every config setting that needs to be used must have the `hasValue` attribute set to `true`; if the `strictMode` element is missing or if its value is set to `false`, every config setting that gets validated by the PowerShell's `if` statement will be used.
 
-You may notice that the provided [sample config file](PlexBackup.ps1.SAMPLE.json] looks a bit more complex than the example above. The sample adds a few metadata (`_meta`) elements to make it easier for you to pick from the supported ranges or sets of values (the `_meta` elements serve only informational purposes). The sample also includes a couple of `hasValue` flags. When set to `true`, the `hasValue` flag indicates that the corresponding setting must be used even if its values contains an empty string, null, or false (by default, these values are ignored).
+You may notice that the provided [sample config file](PlexBackup.ps1.SAMPLE.json) looks a bit more complex than the example above. The sample adds a few metadata (`_meta`) elements to make it easier for you to pick from the supported ranges or sets of values (the `_meta` elements serve only informational purposes). The sample also includes a couple of `hasValue` flags. When set to `true`, the `hasValue` flag indicates that the corresponding setting must be used even if its values contains an empty string, null, or false (by default, these values are ignored).
 
 Make sure you use proper JSON formatting (escape characters, etc) when defining the config values (e.g. you must escape each backslash characters with another backslash).
 
@@ -361,16 +361,16 @@ Common PowerShell parameters (the script is not using these explicitly).
 
 To check whether the backup script executed successfully or encountered an error, check the value of the `$LASTEXITCODE` variable: `0` (zero) indicates success, while any positive number indicates an error. Exit code of `1` implies that the error occurred during the backup or the restore operation. Exit codes higher than `1` indicate that a problem occurred before the script launched a backup or a restore job. You should not need this, but just in case, here is the list of currently supported exit codes:
 
--  `0`: success
--  `1`: error during backup or restore operation
--  `2`: error processing config file
--  `3`: problem determining or setting backup folder
--  `4`: problem with log file(s)
--  `5`: cannot determine path to PMS executable
--  `6`: cannot read Plex Windows services
--  `7`: cannot stop Plex Windows services
--  `8`: cannot stop PMS executable file
--  `9`: path to 7-zip command-line tool is undefined or does not exist
+- `0` : success
+- `1` : error during backup or restore operation
+- `2` : error processing config file
+- `3` : problem determining or setting backup folder
+- `4` : problem with log file(s)
+- `5` : cannot determine path to PMS executable
+- `6` : cannot read Plex Windows services
+- `7` : cannot stop Plex Windows services
+- `8` : cannot stop PMS executable file
+- `9` : path to 7-zip command-line tool is undefined or does not exist
 - `10`: version mismatch between backup and current Plex Media Server instance
 
 ## Examples
