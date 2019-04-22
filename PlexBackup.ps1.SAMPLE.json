@@ -169,7 +169,7 @@
     },
     "ArchiverPath": {
         "_meta": {
-            "default": "$env:LOCALAPPDATA\\Plex Media Server"
+            "default": "$env:ProgramFiles\7-Zip\7z.exe"
         },
         "value": null
     }
