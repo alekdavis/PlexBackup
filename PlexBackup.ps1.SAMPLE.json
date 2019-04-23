@@ -169,7 +169,7 @@
     },
     "ArchiverPath": {
         "_meta": {
-            "default": "$env:ProgramFiles\7-Zip\7z.exe"
+            "default": "$env:ProgramFiles\\7-Zip\\7z.exe"
         },
         "value": null
     }
