@@ -269,9 +269,9 @@ $env:ProgramFiles\7-Zip\7z.exe.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.5.3
+Version    : 1.5.4
 Author     : Alek Davis
-Created on : 2019-04-03
+Created on : 2019-04-24
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -2225,7 +2225,7 @@ function DecompressPlexAppDataFolder {
         LogMessage (Indent (GetTimestamp))
 
         try {
-            Start-BitsTransfer -Source $backupZipFilePath -Destination $tempZipFilePath
+            Start-BitsTransfer -Source $backupZipFilePath -Destination $tempZipFilePath -ErrorAction Stop
         }
         catch {
             LogException $_
@@ -2485,7 +2485,7 @@ function CompressPlexAppDataFolder {
             LogMessage (Indent (GetTimestamp))
 
             try {
-                Start-BitsTransfer -Source $tempZipFilePath -Destination $backupZipFilePath
+                Start-BitsTransfer -Source $tempZipFilePath -Destination $backupZipFilePath -ErrorAction Stop
             }
             catch {
                 LogException $_
