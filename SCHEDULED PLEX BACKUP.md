@@ -16,7 +16,7 @@ You can set the task properties in the new task creation wizard or modify after 
 
 When setting up the Plex backup scheduled task, please make sure that it runs:
 
-- only when use is logged on (i.e. when Plex Media Server is running, unless you have it running as a Windows service)
+- only when use is logged on
 - as the same account as you Plex Media Server process
 - with highest privileges
 
