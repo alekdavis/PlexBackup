@@ -56,6 +56,15 @@ Set-ExecutionPolicy RemoteSigned
 
 This will allow running unsigned scripts that you write on your local computer and signed scripts downloaded from the Internet (okay, this is not a signed script, but if you copy it locally, make a non-destructive change--e.g. add a space character, remove the space character, and save the file--it should work). For additional information, see [Running Scripts](https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)) at Microsoft TechNet Library.
 
+### Dependencies
+
+PlexBackup requires on the following modules:
+
+- [ScriptVersion](https://www.powershellgallery.com/packages/ScriptVersion)
+- [ConfigFile](https://www.powershellgallery.com/packages/ConfigFile)
+
+To verify that the modules get installed, run the script manually. You may be [prompted](https://docs.microsoft.com/en-us/powershell/gallery/how-to/getting-support/bootstrapping-nuget) to update the [NuGet](https://www.nuget.org/downloads) version (or you cab do it yourself in advance).
+
 ### Runtime parameters
 The default value of the PlexBackup script's runtime parameters are defined in code, but you can override some of them via command-line arguments or config file settings.
 
@@ -172,15 +181,6 @@ For additional information or if you run into any issues, check support articles
 
 #### Addresses
 By defaul, PlexBackup will use the username provided via the SMTP credentials as both the `To` and `From` addresses, but you can set them explicitly via the `To` and `From` parameters. If the `To` parameter is not specified, the recepient's address will be the same as the sender's.
-
-## Dependencies
-
-PlexBackup requires on the following modules:
-
-- [ScriptVersion](https://www.powershellgallery.com/packages/ScriptVersion)
-- [ConfigFile](https://www.powershellgallery.com/packages/ConfigFile)
-
-To verify that the modules get installed, run the script manually. You may be [prompted](https://docs.microsoft.com/en-us/powershell/gallery/how-to/getting-support/bootstrapping-nuget) to update the [NuGet](https://www.nuget.org/downloads) version (or you cab do it yourself in advance).
 
 ## See also
 
