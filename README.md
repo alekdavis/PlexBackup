@@ -173,20 +173,20 @@ For additional information or if you run into any issues, check support articles
 #### Addresses
 By defaul, PlexBackup will use the username provided via the SMTP credentials as both the `To` and `From` addresses, but you can set them explicitly via the `To` and `From` parameters. If the `To` parameter is not specified, the recepient's address will be the same as the sender's.
 
-## See also
-
-- [Getting started](GETTING%20STARTED.md)
-- [Scheduled Plex backup](SCHEDULED%20PLEX%20BACKUP.md)
-- [Frequently asked questions (FAQs)](FAQs.md)
-
 ## Dependencies
 
-PlexBackup relies on the following modules:
+PlexBackup requires on the following modules:
 
 - [ScriptVersion](https://www.powershellgallery.com/packages/ScriptVersion)
 - [ConfigFile](https://www.powershellgallery.com/packages/ConfigFile)
 
 To verify that the modules get installed, run the script manually. You may be [prompted](https://docs.microsoft.com/en-us/powershell/gallery/how-to/getting-support/bootstrapping-nuget) to update the [NuGet](https://www.nuget.org/downloads) version (or you cab do it yourself in advance).
+
+## See also
+
+- [Getting started](GETTING%20STARTED.md)
+- [Scheduled Plex backup](SCHEDULED%20PLEX%20BACKUP.md)
+- [Frequently asked questions (FAQs)](FAQs.md)
 
 ## Syntax
 ```PowerShell
