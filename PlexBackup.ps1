@@ -269,9 +269,9 @@ $env:ProgramFiles\7-Zip\7z.exe.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.5.4
+Version    : 1.5.5
 Author     : Alek Davis
-Created on : 2019-04-24
+Created on : 2019-04-26
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -600,56 +600,27 @@ $EXITCODE_ERROR_STOPSERVICES    =  7 # cannot stop Plex Windows services
 $EXITCODE_ERROR_STOPPMSEXE      =  8 # cannot stop PMS executable file
 $EXITCODE_ERROR_ARCHIVERPATH    =  9 # archiver path undefined or file missing
 $EXITCODE_ERROR_VERSIONMISMATCH = 10 # archiver path undefined or file missing
+$EXITCODE_ERROR_MODULE          = 11 # cannot load module
 
 #------------------------------[ FUNCTIONS ]-------------------------------
 
 #--------------------------------------------------------------------------
-# GetScriptVersionInfo
-#   Returns this script's version information defined in the .NOTES comment
-#   header at the top of the script.
-function GetScriptVersionInfo {
-    $notes = $null
-    $notes = @{}
+# LoadModule
+#   Installs (if needed) and loads a PowerShell module.
+function LoadModule {
+    param(
+        [string]
+        $ModuleName
+    )
 
-    # Get the .NOTES section from the script header comment.
-    $notesText = (Get-Help -Full $PSCommandPath).alertSet.alert.Text
+    if (!(Get-Module -Name $ModuleName)) {
 
-    # Split the .NOTES section by lines.
-    $lines = ($notesText -split '\r?\n').Trim()
-
-    # Iterate through every line.
-    foreach ($line in $lines) {
-        if (!$line) {
-            continue
+        if (!(Get-Module -Listavailable -Name $ModuleName)) {
+            Install-Module -Name $ModuleName -Force -Scope CurrentUser -ErrorAction Stop
         }
 
-        $name  = $null
-        $value = $null
-
-        # Split line by the first colon (:) character.
-        if ($line.Contains(':')) {
-            $nameValue = $null
-            $nameValue = @()
-
-            $nameValue = ($line -split ':',2).Trim()
-
-            $name = $nameValue[0]
-
-            if ($name) {
-                $value = $nameValue[1]
-
-                if ($value) {
-                    $value = $value.Trim()
-                }
-
-                if (!($notes.ContainsKey($name))) {
-                    $notes.Add($name, $value)
-                }
-            }
-        }
+        Import-Module $ModuleName -ErrorAction Stop -Force
     }
-
-    return $notes
 }
 
 #--------------------------------------------------------------------------
@@ -713,126 +684,6 @@ function SavePmsVersion {
 
         LogWarning ($_.Exception.Message)
     }
-}
-
-#--------------------------------------------------------------------------
-# InitConfig
-#   Initializes runtime parameters from the script's config file settings.
-function InitConfig {
-
-    # If config file is specified, check if it exists.
-    if ($script:ConfigFile) {
-
-        if (!(Test-Path -Path $script:ConfigFile -PathType Leaf)) {
-            LogError "Cannot find config file:" $false
-            LogError (Indent $script:ConfigFile) $false
-
-            return $false
-        }
-    }
-    # If config file is not specified, check if the default config file exists.
-    else {
-        # Default config file is named after running script with .json extension.
-        $script:ConfigFile = $PSCommandPath + $script:ConfigFileExt
-
-        # Default config file is optional.
-        if (!(Test-Path -Path $script:ConfigFile -PathType Leaf)) {
-            return $true
-        }
-    }
-
-    LogMessage "Loading runtime settings from config file:" $false
-    LogMessage (Indent $script:ConfigFile) $false
-
-    $config = @{}
-
-    try {
-        $json = Get-Content $script:ConfigFile -Raw `
-            -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
-
-        if ($json) {
-            $config = ConvertJsonStringToObject $json
-        }
-        else {
-            LogWarning "Config file is empty."
-        }
-    }
-    catch {
-        LogException $_
-
-        return $false
-    }
-
-    # Make sure we got at least one config value.
-    if ((!$config) -or ($config.PSBase.Count -eq 0)) {
-        return $true
-    }
-
-    # Assign config values to the script variables with the same names.
-    foreach ($key in $config.Keys) {
-        Set-Variable -Scope Script -Name $key -Value $config[$key] -Force -Visibility Private
-    }
-
-    return $true
-}
-
-#--------------------------------------------------------------------------
-# ConvertJsonStringToObject
-#   Returns a hashtable holding initialized settings retrieved from the
-#   script's config file.
-function ConvertJsonStringToObject {
-    param (
-        [string]
-        $json
-    )
-
-    $hash = @{}
-
-    $jsonObject = $json | ConvertFrom-Json `
-        -ErrorAction:SilentlyContinue -WarningAction:SilentlyContinue
-
-    $version    = $jsonObject._meta.version
-    $strictMode = $jsonObject._meta.strictMode
-
-    $jsonObject.PSObject.Properties | ForEach-Object {
-
-        # In ForEach-Object loops 'return' acts as 'continue' in simple loops.
-        if ($_.Name.StartsWith("_")) {
-            # Skip to next (yes, 'return' is the right statement here).
-            return
-        }
-
-        # For version 1.0 of config file...
-        if ($version -eq '1.0') {
-            # ...first check if 'hasValue' property is set for the element.
-            if ($_.Value.hasValue) {
-                $hash.Add(($_.Name), $_.Value.value)
-            }
-            # If 'hasValue' is not set or is missing...
-            else {
-                # ...if config file is in strict mode, ignore the element;
-                if ($strictMode) {
-                    return
-                }
-                # otherwise, check if there is a non-null/non-empty/true value.
-                else {
-                    # Only include values that ar resolved as true.
-                    if ($_.Value.value) {
-                        $hash.Add(($_.Name), $_.Value.value)
-                    }
-                }
-            }
-        }
-        # For version, prior to 1.0...
-        else {
-            # Only include values that ar resolved as true.
-            if ($_.Value) {
-                $hash.Add(($_.Name), $_.Value)
-            }
-        }
-    }
-
-    return $hash
 }
 
 #--------------------------------------------------------------------------
@@ -1232,7 +1083,7 @@ function PrintVersion {
         $writeToConsole = $true
     )
 
-    $versionInfo = GetScriptVersionInfo
+    $versionInfo = Get-ScriptVersion
     $scriptName  = (Get-Item $PSCommandPath).Basename
 
     LogMessage ($scriptName +
@@ -3192,6 +3043,20 @@ if ($ClearScreen) {
 # Make sure we have no pending errors.
 $Error.Clear()
 
+# Load modules for reading config file settings and script version info.
+# https://www.powershellgallery.com/packages/ScriptVersion
+# https://www.powershellgallery.com/packages/ConfigFile
+$modules = @("ScriptVersion", "ConfigFile")
+foreach ($module in $modules) {
+    try {
+        LoadModule -ModuleName $module
+    }
+    catch {
+        LogWarning "Cannot load module $module." $false
+        exit $EXITCODE_ERROR_MODULE
+    }
+}
+
 # Save time for logging purposes.
 $startTime = Get-Date
 
@@ -3204,7 +3069,10 @@ LogMessage "Script started at:" $false
 LogMessage (Indent $startTime) $false
 
 # Load config settings from a config file (if any).
-if (!(InitConfig)) {
+try {
+    Import-ConfigFile
+}
+catch {
     LogWarning "Cannot initialize run-time configuration settings." $false
     exit $EXITCODE_ERROR_CONFIG
 }
