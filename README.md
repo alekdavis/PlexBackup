@@ -26,7 +26,7 @@ You may want to play with either option to see which one works better for you.
 ### Backup modes
 PlexBackup can run in the following modes (specified by the `Mode` switch or a corresponding shortcut):
 
-- `Backup`: the default mode that sreates a new backup archive.
+- `Backup`: the default mode that creates a new backup archive.
 - `Continue`: resumes an incomplete backup job or, in case of the `Robocopy` backup, resyncs the backup archive.
 - `Restore`: restores Plex application data from a backup.
 
