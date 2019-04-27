@@ -1,7 +1,7 @@
 {
     "_meta": {
         "version": "1.0",
-        "strictMode": false,
+        "strict": false,
         "description": "Sample configuration settings for PlexBackup.ps1."
     },
     "Mode": {
