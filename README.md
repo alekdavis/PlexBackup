@@ -179,6 +179,15 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
 - [Scheduled Plex backup](SCHEDULED%20PLEX%20BACKUP.md)
 - [Frequently asked questions (FAQs)](FAQs.md)
 
+## Dependencies
+
+PlexBackup relies on the following modules:
+
+- [ScriptVersion](https://www.powershellgallery.com/packages/ScriptVersion)
+- [ConfigFile](https://www.powershellgallery.com/packages/ConfigFile)
+
+To verify that the modules get installed, run the script manually. You may be [prompted](https://docs.microsoft.com/en-us/powershell/gallery/how-to/getting-support/bootstrapping-nuget) to update the [NuGet](https://www.nuget.org/downloads) version (or you cab do it yourself in advance).
+
 ## Syntax
 ```PowerShell
 .\PlexBackup.ps1 `
@@ -373,13 +382,6 @@ To check whether the backup script executed successfully or encountered an error
 - `9` : path to 7-zip command-line tool is undefined or does not exist
 - `10`: version mismatch between backup and current Plex Media Server instance
 - `11`: cannot install or import a module
-
-## Dependencies
-
-Plex Backup relies on the following modules:
-
-- [ScriptVersion](https://www.powershellgallery.com/packages/ScriptVersion)
-- [ConfigFile](https://www.powershellgallery.com/packages/ConfigFile)
 
 ## Examples
 
