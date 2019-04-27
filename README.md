@@ -372,6 +372,14 @@ To check whether the backup script executed successfully or encountered an error
 - `8` : cannot stop PMS executable file
 - `9` : path to 7-zip command-line tool is undefined or does not exist
 - `10`: version mismatch between backup and current Plex Media Server instance
+- `11`: cannot install or import a module
+
+## Dependencies
+
+Plex Backup relies on the following modules:
+
+- [ScriptVersion](https://www.powershellgallery.com/packages/ScriptVersion)
+- [ConfigFile](https://www.powershellgallery.com/packages/ConfigFile)
 
 ## Examples
 
