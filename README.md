@@ -58,7 +58,7 @@ This will allow running unsigned scripts that you write on your local computer a
 
 ### Dependencies
 
-PlexBackup requires on the following modules:
+PlexBackup uses the following modules:
 
 - [ScriptVersion](https://www.powershellgallery.com/packages/ScriptVersion)
 - [ConfigFile](https://www.powershellgallery.com/packages/ConfigFile)
