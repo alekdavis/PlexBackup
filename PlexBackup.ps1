@@ -269,7 +269,7 @@ $env:ProgramFiles\7-Zip\7z.exe.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.5.5
+Version    : 1.5.6
 Author     : Alek Davis
 Created on : 2019-04-26
 License    : MIT License
@@ -3070,7 +3070,7 @@ LogMessage (Indent $startTime) $false
 
 # Load config settings from a config file (if any).
 try {
-    Import-ConfigFile
+    Import-ConfigFile -DefaultParameters $PSBoundParameters
 }
 catch {
     LogWarning "Cannot initialize run-time configuration settings." $false
