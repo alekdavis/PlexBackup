@@ -269,7 +269,7 @@ $env:ProgramFiles\7-Zip\7z.exe.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.5.7
+Version    : 1.5.8
 Author     : Alek Davis
 Created on : 2019-05-18
 License    : MIT License
