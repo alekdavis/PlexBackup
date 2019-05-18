@@ -269,9 +269,9 @@ $env:ProgramFiles\7-Zip\7z.exe.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.5.6
+Version    : 1.5.7
 Author     : Alek Davis
-Created on : 2019-04-26
+Created on : 2019-05-18
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -881,7 +881,7 @@ function LogWarning {
         (Log $message $null Yellow) | Out-Null
     }
 
-    if (!$writeToFile) {
+    if (!$writeToFile -or !$script:Log -or !$script:LogFile) {
         return
     }
 
@@ -913,7 +913,7 @@ function LogMessage {
         (Log $message $null) | Out-Null
     }
 
-    if (!$writeToFile) {
+    if (!$writeToFile -or !$script:Log -or !$script:LogFile) {
         return
     }
 
@@ -3070,7 +3070,7 @@ LogMessage (Indent $startTime) $false
 
 # Load config settings from a config file (if any).
 try {
-    Import-ConfigFile -DefaultParameters $PSBoundParameters
+    Import-ConfigFile -ConfigFilePath $ConfigFile -DefaultParameters $PSBoundParameters
 }
 catch {
     LogWarning "Cannot initialize run-time configuration settings." $false
