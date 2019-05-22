@@ -28,7 +28,7 @@ By default, PlexBackup.ps1 creates a backup folder in the same directory from wh
 
 ### Update config file settings
 
-Open the `PlexBackup.ps1.json` file in a text editor, such as _Notepad_, and verify the backup settings. At the very least, set the location of the backup root folder (`BackupRootDir`). Remember to escape backslash characters (`\`) in the path with another backslash character, e.g. if your backup root folder points to the `\\MYNAS\Backup` share, it must be entered as `\\\\MYNAS\\Backup`. Save the config file.
+Open the `PlexBackup.ps1.json` file in a text editor, such as _Notepad_, and verify the backup settings. At the very least, set the location of the backup root folder using the `value` property of the `BackupRootDir` element. Remember to escape backslash characters (`\`) in the path with another backslash character, e.g. if your backup root folder points to the `\\MYNAS\Backup` share, it must be entered as `\\\\MYNAS\\Backup`. Save the config file.
 
 ### Make sure Plex Media Server is running
 
