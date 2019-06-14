@@ -269,9 +269,9 @@ $env:ProgramFiles\7-Zip\7z.exe.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.5.8
+Version    : 1.5.9
 Author     : Alek Davis
-Created on : 2019-05-18
+Created on : 2019-06-14
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -1413,10 +1413,16 @@ function FormatEmail {
         [bool]
         $success = $true,
         [string]
-        $errorInfo = $null
+        $errorInfo = $null,
+        [long]
+        $objectCount = 0,
+        [long]
+        $backupSize = 0
     )
 
     $scriptDuration = (New-TimeSpan -Start $scriptStartTime -End $scriptEndTime).ToString("hh\:mm\:ss\.fff")
+
+
 
     $body = "
 <!DOCTYPE html>
@@ -1443,6 +1449,10 @@ function FormatEmail {
 <tr><td style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_DURATION#</td></tr>
 <tr><td style='#STYLE_TEXT#'>The backup folder is at</td></tr>
 <tr><td style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_DIR#</td></tr>
+<tr><td style='#STYLE_TEXT#'>containing</td></tr>
+<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_OBJECTS# objects</td></tr>
+<tr><td style='#STYLE_TEXT#'>and</td></tr>
+<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_SIZE# GB of data</td></tr>
 <tr><td style='#STYLE_ERROR#'>Error info</td></tr>
 <tr><td style='#STYLE_VAR_ERROR#'>#VALUE_ERROR_INFO#</td></tr>
 </td>
@@ -1507,6 +1517,8 @@ function FormatEmail {
         VALUE_SCRIPT_DURATION   = $scriptDuration
         VALUE_RESULT            = $resultText
         VALUE_ERROR_INFO        = $errorInfo
+        VALUE_BACKUP_OBJECTS    = '{0:N0}' -f $objectCount
+        VALUE_BACKUP_SIZE       = [math]::round($backupSize /1Gb, 1)
     }
 
     # $htmlEmail = Get-Content -Path TemplateLetter.txt -RAW
@@ -1860,7 +1872,7 @@ function StartPlexMediaServer {
         LogMessage (Indent $plexServerExePath)
 
         try {
-            Start-Process $plexServerExePath
+            Start-Process $plexServerExePath -LoadUserProfile
         }
         catch {
             LogException $_
@@ -3542,6 +3554,8 @@ else {
     $errorInfo = "For error details, check the log file (make sure the script runs with logging turned on)."
 }
 
+$backupInfo = Get-ChildItem -Recurse $BackupDirPath | Measure-Object -Property Length -Sum
+
 if (MustSendMail $SendMail $Mode $success) {
     $mailBody = FormatEmail `
         $computerName `
@@ -3550,7 +3564,10 @@ if (MustSendMail $SendMail $Mode $success) {
         $BackupDirPath `
         $startTime `
         $endTime `
-        $success
+        $success `
+        $errorInfo `
+        $backupInfo.Count `
+        $backupInfo.Sum
 
     if ($mailBody) {
 
