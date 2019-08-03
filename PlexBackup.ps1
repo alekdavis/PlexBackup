@@ -627,7 +627,7 @@ function LoadModule {
 # GetPmsVersion
 #   Returns either:
 #   - file version of the current Plex Media Server executable, or
-#   - version of the last saved backup (from the backup.txt file)
+#   - version of the last saved backup (from the version.txt file)
 function GetPmsVersion {
     param (
         [string]
@@ -660,7 +660,7 @@ function GetPmsVersion {
 #--------------------------------------------------------------------------
 # SavePmsVersion
 #   Saves current file version of the Plex Media Server executable to
-#   the backup.txt file.
+#   the version.txt file.
 function SavePmsVersion {
     param (
         [string]
@@ -692,7 +692,7 @@ function SavePmsVersion {
 
 #--------------------------------------------------------------------------
 # Indent
-#   Adds indents in front of the text string.
+#   Adds indent(s) in front of the text string.
 function Indent {
     param (
         [string]
