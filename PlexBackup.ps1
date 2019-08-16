@@ -269,9 +269,9 @@ $env:ProgramFiles\7-Zip\7z.exe.
 Specify this command-line switch to clear console before starting script execution.
 
 .NOTES
-Version    : 1.5.9
+Version    : 1.5.10
 Author     : Alek Davis
-Created on : 2019-06-14
+Created on : 2019-08-15
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -1002,13 +1002,13 @@ function InitLog {
         return $true
     }
 
-    if (!$script:LogFile) {
+    if ($script:Log -and !$script:LogFile) {
         $logFileName = "$script:Mode.log"
 
         $script:LogFile = Join-Path $script:BackupDirPath $logFileName
     }
 
-    if (!$script:ErrorLogFile) {
+    if ($script:ErrorLog -and !$script:ErrorLogFile) {
         $errorLogFileName = "$script:Mode.err.log"
 
         $script:ErrorLogFile = Join-Path $script:BackupDirPath $errorLogFileName
