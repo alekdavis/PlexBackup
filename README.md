@@ -77,7 +77,7 @@ A config file must use [JSON formatting](https://www.json.org/), such as:
 {
     "_meta": {
         "version": "1.0",
-        "strictMode": false,
+        "strict": false,
         "description": "Sample configuration settings for PlexBackup.ps1."
     },
     "Mode": { "value": null },
