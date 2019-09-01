@@ -1300,10 +1300,10 @@ function MustSendMail {
         if ($mode -eq "Restore") {
             return $false
         }
-        if (($when.EndsWith("Error")) -and ($success-eq $true)) {
+        if (($when.EndsWith("Error")) -and ($success -eq $true)) {
             return $false
         }
-        if (($when.EndsWith("Success")) -and ($success-eq $false)) {
+        if (($when.EndsWith("Success")) -and ($success -eq $false)) {
             return $false
         }
 
@@ -1314,10 +1314,10 @@ function MustSendMail {
         if ($mode -ne "Restore") {
             return $false
         }
-        if (($when.EndsWith("Error")) -and ($success-eq $true)) {
+        if (($when.EndsWith("Error")) -and ($success -eq $true)) {
             return $false
         }
-        if (($when.EndsWith("Success")) -and ($success-eq $false)) {
+        if (($when.EndsWith("Success")) -and ($success -eq $false)) {
             return $false
         }
 
