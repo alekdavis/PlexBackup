@@ -2,8 +2,7 @@
 
 <#
 .SYNOPSIS
-Backs up or restores Plex application data files and registry keys on a
-Windows system.
+Backs up or restores Plex application data files and registry keys on a Windows system.
 
 .DESCRIPTION
 The script can run in four modes:
@@ -12,74 +11,33 @@ The script can run in four modes:
 - Continue (continues a previous backup),
 - Restore (restores Plex app data from a backup).
 
-The script backs up the contents of the 'Plex Media Server' folder (app
-data folder) with the exception of some top-level, non-essential folders.
-You can customize the list of folders that do not need to be backed up.
-By default, the following top-level app data folders are not backed up:
+The script backs up the contents of the 'Plex Media Server' folder (app data folder) with the exception of some top-level, non-essential folders. You can customize the list of folders that do not need to be backed up. By default, the following top-level app data folders are not backed up:
 
   Diagnostics, Crash Reports, Updates, Logs
 
-The backup process compresses the contents Plex app data folders to the ZIP
-files (with the exception of folders containing subfolders and files with
-really long paths). For efficiency reasons, the script first compresses the
-data in a temporary folder and then copies the compressed (ZIP) files to the
-backup destination folder. You can compress data to the backup destination
-folder directly (bypassing the saving to the temp folder step) by setting the
-value of the $TempZipFileDir variable to null or empty string. Folders holding
-subfolders and files with very long paths get special treatment: instead of
-compressing them, before performing the backup, the script moves them to the
-backup folder as-is, and after the backup, it copies them to their original
-locations. Alternatively, backup can create a mirror of the essential app
-data folder via the Robocopy command (to use this option, set the -Robocopy
-switch).
+The backup process compresses the contents Plex app data folders to the ZIP files (with the exception of folders containing subfolders and files with really long paths). For efficiency reasons, the script first compresses the data in a temporary folder and then copies the compressed (ZIP) files to the backup destination folder. You can compress data to the backup destination folder directly (bypassing the saving to the temp folder step) by setting the value of the $TempZipFileDir variable to null or empty string. Folders holding subfolders and files with very long paths get special treatment: instead of compressing them, before performing the backup, the script moves them to the backup folder as-is, and after the backup, it copies them to their original locations. Alternatively, backup can create a mirror of the essential app data folder via the Robocopy command (to use this option, set the -Robocopy switch).
 
-In addition to backing up Plex app data, the script also backs up the contents
-of the Plex Windows Registry key.
+In addition to backing up Plex app data, the script also backs up the contents of the Plex Windows Registry key.
 
-The backup is created in the specified backup folder under a subfolder which
-name reflects the script start time. It deletes the old backup folders
-(you can specify the number of old backup folders to keep).
+The backup is created in the specified backup folder under a subfolder which name reflects the script start time. It deletes the old backup folders (you can specify the number of old backup folders to keep).
 
-If the backup process does not complete due to error, you can run backup in
-the Continue mode (using the '-Mode Continue' command-line switch) and it will
-resume from where it left off. By default, the script picks up the most recent
-backup folder, but you can specify the backup folder using the -BackupDirPath
-command-line switch.
+If the backup process does not complete due to error, you can run backup in the Continue mode (using the '-Mode Continue' command-line switch) and it will resume from where it left off. By default, the script picks up the most recent backup folder, but you can specify the backup folder using the -BackupDirPath command-line switch.
 
-When restoring Plex application data from a backup, the script expects the
-backup folder structure to be the same as the one it creates when it runs in
-the backup mode. By default, it use the backup folder with the name reflecting
-the most recent timestamp, but you can specify an alternative backup folder.
+When restoring Plex application data from a backup, the script expects the backup folder structure to be the same as the one it creates when it runs in the backup mode. By default, it use the backup folder with the name reflecting the most recent timestamp, but you can specify an alternative backup folder.
 
-Before creating backup or restoring data from a backup, the script stops all
-running Plex services and the Plex Media Server process (it restarts them once
-the operation is completed). You can force the script to not start the Plex
-Media Server process via the -Shutdown switch.
+Before creating backup or restoring data from a backup, the script stops all running Plex services and the Plex Media Server process (it restarts them once the operation is completed). You can force the script to not start the Plex Media Server process via the -Shutdown switch.
 
-To override the default script settings, modify the values of script parameters
-and global variables inline or specify them in a config file.
+To override the default script settings, modify the values of script parameters and global variables inline or specify them in a config file.
 
 The script can send an email notification on the operation completion.
 
-The config file must use the JSON format. Not every script variable can be
-specified in the config file (for the list of overridable variables, see the
-InitConfig function or a sample config file). Only non-null values from config
-file will be used. The default config file is named after the running script
-with the '.json' extension, such as: PlexBackup.ps1.json. You can specify a
-custom config file via the -ConfigFile command-line switch. Config file is
-optional. All config values in the config file are optional. The non-null
-config file settings override the default and command-line paramateres, e.g.
-if the command-line -Mode switch is set to 'Backup' and the corresponding
-element in the config file is set to 'Restore' then the script will run in the
-Restore mode.
+The config file must use the JSON format. Not every script variable can be specified in the config file (for the list of overridable variables, see the InitConfig function or a sample config file). Only non-null values from config file will be used. The default config file is named after the running script with the '.json' extension, such as: PlexBackup.ps1.json. You can specify a custom config file via the -ConfigFile command-line switch. Config file is optional. All config values in the config file are optional. The non-null config file settings override the default and command-line paramateres, e.g. if the command-line -Mode switch is set to 'Backup' and the corresponding element in the config file is set to 'Restore' then the script will run in the Restore mode.
 
-On success, the script will set the value of the $LASTEXITCODE variable to 0;
-on error, it will be greater than zero.
+On success, the script will set the value of the $LASTEXITCODE variable to 0; on error, it will be greater than zero.
 
 This script must run as an administrator.
 
-The execution policy must allow running scripts. To check execution policy,
-run the following command:
+The execution policy must allow running scripts. To check execution policy, run the following command:
 
   Get-ExecutionPolicy
 
@@ -90,10 +48,10 @@ If the execution policy does not allow running scripts, do the following:
 
     Set-ExecutionPolicy RemoteSigned
 
-This will allow running unsigned scripts that you write on your local
-computer and signed scripts from Internet.
+This will allow running unsigned scripts that you write on your local computer and signed scripts from Internet.
 
 See also 'Running Scripts' at Microsoft TechNet Library:
+
 https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)
 
 .PARAMETER Mode
@@ -118,24 +76,19 @@ Shortcut for '-Type 7zip'
 Shortcut for '-Type Robocopy'.
 
 .PARAMETER ConfigFile
-Path to the optional custom config file. The default config file is named after
-the script with the '.json' extension, such as 'PlexBackup.ps1.json'.
+Path to the optional custom config file. The default config file is named after the script with the '.json' extension, such as 'PlexBackup.ps1.json'.
 
 .PARAMETER PlexAppDataDir
 Location of the Plex Media Server application data folder.
 
 .PARAMETER BackupRootDir
-Path to the root backup folder holding timestamped backup subfolders. If not
-specified, the script folder will be used.
+Path to the root backup folder holding timestamped backup subfolders. If not specified, the script folder will be used.
 
 .PARAMETER BackupDirPath
-When running the script in the Restore mode, holds path to the backup folder
-(by default, the subfolder with the most recent timestamp in the name located
-in the backup root folder will be used).
+When running the script in the Restore mode, holds path to the backup folder (by default, the subfolder with the most recent timestamp in the name located in the backup root folder will be used).
 
 .PARAMETER TempZipFileDir
-Temp folder used to stage the archiving job (use local drive for efficiency).
-To bypass the staging step, set this parameter to null or empty string.
+Temp folder used to stage the archiving job (use local drive for efficiency). To bypass the staging step, set this parameter to null or empty string.
 
 .PARAMETER Keep
 Number of old backups to keep:
@@ -146,106 +99,68 @@ Number of old backups to keep:
 and so on.
 
 .PARAMETER Retries
-The number of retries on failed copy operations (corresponds to the Robocopy
-/R switch).
+The number of retries on failed copy operations (corresponds to the Robocopy /R switch).
 
 .PARAMETER RetryWaitSec
-Specifies the wait time between retries in seconds (corresponds to the Robocopy
-/W switch).
+Specifies the wait time between retries in seconds (corresponds to the Robocopy /W switch).
 
 .PARAMETER Log
-When set to true, informational messages will be written to a log file.
-The default log file will be created in the backup folder and will be named
-after this script with the '.log' extension, such as 'PlexBackup.ps1.log'.
+When set to true, informational messages will be written to a log file. The default log file will be created in the backup folder and will be named after this script with the '.log' extension, such as 'PlexBackup.ps1.log'.
 
 .PARAMETER LogFile
-Use this switch to specify a custom log file location. When this parameter
-is set to a non-null and non-empty value, the '-Log' switch can be omitted.
+Use this switch to specify a custom log file location. When this parameter is set to a non-null and non-empty value, the '-Log' switch can be omitted.
 
 .PARAMETER LogAppend
-Set this switch to appended log entries to the existing log file, if it exists
-(by default, the old log file will be overwritten).
+Set this switch to appended log entries to the existing log file, if it exists (by default, the old log file will be overwritten).
 
 .PARAMETER ErrorLog
-When set to true, error messages will be written to an error log file.
-The default error log file will be created in the backup folder and will be named
-after this script with the '.err.log' extension, such as 'PlexBackup.ps1.err.log'.
+When set to true, error messages will be written to an error log file. The default error log file will be created in the backup folder and will be named after this script with the '.err.log' extension, such as 'PlexBackup.ps1.err.log'.
 
 .PARAMETER ErrorLogFile
-Use this switch to specify a custom error log file location. When this parameter
-is set to a non-null and non-empty value, the '-ErrorLog' switch can be omitted.
+Use this switch to specify a custom error log file location. When this parameter is set to a non-null and non-empty value, the '-ErrorLog' switch can be omitted.
 
 .PARAMETER ErrorLogAppend
-Set this switch to appended error log entries to the existing error log file,
-if it exists (by default, the old error log file will be overwritten).
+Set this switch to appended error log entries to the existing error log file, if it exists (by default, the old error log file will be overwritten).
 
 .PARAMETER Quiet
-Set this switch to supress all log entries sent to a console.
+Set this switch to suppress all log entries sent to a console.
 
 .PARAMETER Shutdown
-Set this switch to not start the Plex Media Server process at the end of the
-operation (could be handy for restores, so you can double check that all is
-good befaure launching Plex media Server).
+Set this switch to not start the Plex Media Server process at the end of the operation (could be handy for restores, so you can double check that all is good before launching Plex media Server).
 
 .PARAMETER Inactive
 When set, allows the script to continue if Plex Media Server is not running.
 
 .PARAMETER Forces
-Forces restore to ignore version mismatch between the current version of
-Plex Media Server and the version of Plex Media Server active during backup.
+Forces restore to ignore version mismatch between the current version of Plex Media Server and the version of Plex Media Server active during backup.
 
 .PARAMETER SendMail
-Indicates in which case the script must send an email notification about
-the result of the operation. Values (with explanations): Never (default),
-Always, OnError (for any operation), OnSuccess (for any operation), OnBackup
-(for both the Backup and Continue modes on either error or success),
-OnBackupError, OnBackupSuccess, OnRestore (on either error or success),
-OnRestoreError, and OnRestoreSuccess.
+Indicates in which case the script must send an email notification about the result of the operation. Values (with explanations): Never (default), Always, OnError (for any operation), OnSuccess (for any operation), OnBackup (for both the Backup and Continue modes on either error or success), OnBackupError, OnBackupSuccess, OnRestore (on either error or success), OnRestoreError, and OnRestoreSuccess.
 
 .PARAMETER From
-Specifies the email address when email notification sender. If this value
-is not provided, the username from the credentails saved in the credentials
-file or enetered at the credentials prompt will be used. If the From address
-cannot be determined, the notification will not be sent.
+Specifies the email address when email notification sender. If this value is not provided, the username from the credentails saved in the credentials file or entered at the credentials prompt will be used. If the From address cannot be determined, the notification will not be sent.
 
 .PARAMETER To
-Specifies the email address of the email recepient. If this value is not
-provided, the addressed defined in the To parameter will be used.
+Specifies the email address of the email recipient. If this value is not provided, the addressed defined in the To parameter will be used.
 
 .PARAMETER SmtpServer
-Defines the SMTP server host. If not specified, the notification will not
-be sent.
+Defines the SMTP server host. If not specified, the notification will not be sent.
 
 .PARAMETER Port
-Specifies an alternative port on the SMTP server. Default: 0 (zero, i.e.
-default port 25 will be used).
+Specifies an alternative port on the SMTP server. Default: 0 (zero, i.e. default port 25 will be used).
 
 .PARAMETER UseSsl
-Tells the script to use the Secure Sockets Layer (SSL) protocol when
-connecting to the SMTP server. By default, SSL is not used.
+Tells the script to use the Secure Sockets Layer (SSL) protocol when connecting to the SMTP server. By default, SSL is not used.
 
 .PARAMETER CredentialFile
-Path to the file holding username and encrypted password of the account that
-has permission to send mail via the SMTP server. You can generate the file
-via the following PowerShell command:
+Path to the file holding username and encrypted password of the account that has permission to send mail via the SMTP server. You can generate the file via the following PowerShell command:
 
   Get-Credential | Export-CliXml -Path "PathToFile.xml"
 
-The default log file will be created in the backup folder and will be named
-after this script with the '.xml' extension, such as 'PlexBackup.ps1.xml'.
-You can also save the credentials in the file by running the script with the
-PromptForCredential and SaveCredential switches turned on. If the credentials
-are not specified, the send mail operation will be invoked on behalf of the
-current (or anonymous) user. Please be aware that you may some public SMTP
-servers, such as Gmail or Yahoo, have special requirements, i.e. you may need
-to set up an application password (when using two-factor authentication -- 2FA
--- with Gmail) or modify your account settings to allow less secure applications
-to connect to the SMTP server (when not using 2FA). Please check the
-requirements with your SMTP provider.
+The default log file will be created in the backup folder and will be named after this script with the '.xml' extension, such as 'PlexBackup.ps1.xml'. You can also save the credentials in the file by running the script with the PromptForCredential and SaveCredential switches turned on. If the credentials are not specified, the send mail operation will be invoked on behalf of the current (or anonymous) user. Please be aware that you may some public SMTP servers, such as Gmail or Yahoo, have special requirements, i.e. you may need to set up an application password (when using two-factor authentication -- 2FA -- with Gmail) or modify your account settings to allow less secure applications to connect to the SMTP server (when not using 2FA). Please check the requirements with your SMTP provider.
 
 .PARAMETER PromptForCredential
-Tells the script to prompt user for SMTP server credentials, if they are
-not specified in the credential file.
+Tells the script to prompt user for SMTP server credentials, if they are not specified in the credential file.
 
 .PARAMETER SaveCredential
 Tells the script to save the SMTP server credentials in the credential file.
@@ -254,24 +169,30 @@ Tells the script to save the SMTP server credentials in the credential file.
 Tells the script to not use credentials when sending email notifications.
 
 .PARAMETER SendLogFile
-Indicates in which case the script must send an attachment along with th email
-notification. Values: Never (default), OnError, OnSuccess, Always.
+Indicates in which case the script must send an attachment along with th email notification. Values: Never (default), OnError, OnSuccess, Always.
 
 .PARAMETER NoLogo
 Specify this command-line switch to not print version and copyright info.
 
 .PARAMETER ArchiverPath
-Defines the path to the 7-zip command line tool (7z.exe) which is required
-when running the script with the '-Type 7zip' or '-SevenZip' switch. Default:
-$env:ProgramFiles\7-Zip\7z.exe.
+Defines the path to the 7-zip command line tool (7z.exe) which is required when running the script with the '-Type 7zip' or '-SevenZip' switch. Default: $env:ProgramFiles\7-Zip\7z.exe.
 
 .PARAMETER ClearScreen
 Specify this command-line switch to clear console before starting script execution.
 
+.PARAMETER ModulePath
+Optional path to directory holding the modules used by this script. This can be useful if the script runs on the system with no or restricted access to the Internet. By default, the module path will point to the 'Modules' folder in the script's folder.
+
+.PARAMETER WakeUpDir
+Optional path to a remote share that may need to be woken up before starting Plex Media Service.
+
+.PARAMETER Logoff
+Specify this command-line switch to log off all user accounts (except the running one) before starting Plex Media Server. This may help address issues with remote drive mappings under the wrong credentials.
+
 .NOTES
-Version    : 1.5.10
+Version    : 1.6.0
 Author     : Alek Davis
-Created on : 2019-08-15
+Created on : 2019-09-10
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -291,19 +212,15 @@ Backs up compressed Plex application data to the default backup location.
 
 .EXAMPLE
 PlexBackup.ps1 -Robocopy
-Backs up Plex application data to the default backup location using
-the Robocopy command instead of the file and folder compression.
+Backs up Plex application data to the default backup location using the Robocopy command instead of the file and folder compression.
 
 .EXAMPLE
 PlexBackup.ps1 -SevenZip
-Backs up Plex application data to the default backup location using
-the 7-zip command-line tool (7z.exe). 7-zip command-line tool must
-be installed and the script must know its path.
+Backs up Plex application data to the default backup location using the 7-zip command-line tool (7z.exe). 7-zip command-line tool must be installed and the script must know its path.
 
 .EXAMPLE
 PlexBackup.ps1 -BackupRootDir "\\MYNAS\Backup\Plex"
-Backs up Plex application data to the specified backup location on a
-network share.
+Backs up Plex application data to the specified backup location on a network share.
 
 .EXAMPLE
 PlexBackup.ps1 -Continue
@@ -315,23 +232,14 @@ Restores Plex application data from the latest backup in the default folder.
 
 .EXAMPLE
 PlexBackup.ps1 -Restore -Robocopy
-Restores Plex application data from the latest backup in the default folder
-created using the Robocopy command.
+Restores Plex application data from the latest backup in the default folder created using the Robocopy command.
 
 .EXAMPLE
-PlexBackup.ps1 -Mode Restore -BackupDirPath "\\MYNAS\PlexBackup\20190101183015"
-Restores Plex application data from a backup in the specified remote folder.
+PlexBackup.ps1 -Mode Restore -BackupDirPath "\\MYNAS\PlexBackup\20190101183015" Restores Plex application data from a backup in the specified remote folder.
 
 .EXAMPLE
 PlexBackup.ps1 -SendMail Always -UseSsl -Prompt -Save -SendLogFile OnError -SmtpServer smtp.gmail.com -Port 587
-Runs a backup job and sends an email notification over an SSL channel.
-If the backup operation fails, the log file will be attached to the email
-message. The sender's and the recipient's email addresses will determined
-from the username of the credential object. The credential object will be
-set either from the credential file or, if the file does not exist, via
-a user prompt (in the latter case, the credential object will be saved in
-the credential file with password encrypted using a user- and computer-
-specific key).
+Runs a backup job and sends an email notification over an SSL channel. If the backup operation fails, the log file will be attached to the email message. The sender's and the recipient's email addresses will determined from the username of the credential object. The credential object will be set either from the credential file or, if the file does not exist, via a user prompt (in the latter case, the credential object will be saved in the credential file with password encrypted using a user- and computer-specific key).
 
 .EXAMPLE
 Get-Help .\PlexBackup.ps1
@@ -520,7 +428,16 @@ param (
 
     [Alias("Cls")]
     [switch]
-    $ClearScreen
+    $ClearScreen,
+
+    [string]
+    $ModulePath = "$PSScriptRoot\Modules",
+
+    [string]
+    $WakeUpDir = $null,
+
+    [switch]
+    $Logoff
 )
 
 #-----------------------------[ DECLARATIONS ]-----------------------------
@@ -3069,6 +2986,23 @@ if ($ClearScreen) {
 # Make sure we have no pending errors.
 $Error.Clear()
 
+# Add custom folder(s) to the module path.
+if ($ModulePath) {
+    if ($env:PSModulePath -notmatch ";$") {
+        $env:PSModulePath += ";"
+    }
+
+    $paths = $ModulePath -split ";"
+
+    foreach ($path in $paths){
+        $path = $path.Trim();
+
+        if (-not ($env:PSModulePath.ToLower().Contains(";$path;".ToLower()))) {
+            $env:PSModulePath += "$path;"
+        }
+    }
+}
+
 # Load modules for reading config file settings and script version info.
 # https://www.powershellgallery.com/packages/ScriptVersion
 # https://www.powershellgallery.com/packages/ConfigFile
@@ -3517,6 +3451,21 @@ else {
         $ArchiverPath `
         $pmsVersion `
         $pmsVersionPath
+}
+
+# Log off all currently logged on users except the current user.
+if ($Logoff) {
+    try {
+        quser | Select-String "Disc" | ForEach {logoff ($_.tostring() -split ' +')[2]}
+    }
+    catch {
+        LogException $_
+    }
+}
+
+# Wake up a NAS share.
+if ($WakeUpDir) {
+    WakeUpDir $WakeUpDir
 }
 
 # Start all previously running Plex services (if any).

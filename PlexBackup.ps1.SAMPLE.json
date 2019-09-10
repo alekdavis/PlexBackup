@@ -172,5 +172,17 @@
             "default": "$env:ProgramFiles\\7-Zip\\7z.exe"
         },
         "value": null
+    },
+    "ModulePath": {
+        "_meta": {
+            "default": "$PSScriptRoot\\Modules"
+        },
+        "value": null
+    },
+    "WakeUpDir": {
+        "value": null
+    },
+    "Logoff": {
+        "value": null
     }
 }

@@ -10,7 +10,7 @@ Plex does not offer a meaningful backup feature. Yes, it can back up a Plex data
 IMPORTANT: The script will not back up media (video, audio, images) or Plex program files. You must use different backup techniques for those. For example, you can keep your media files on a [RAID 5](https://en.wikipedia.org/wiki/Standard_RAID_levels#RAID_5) disk array. And you don't really need to back up Plex program files, since you can always download them. But for everything else, PlexBackup is your guy.
 
 ### Backup types
-The script can perform two types of backup: compressed (default or `7zip`) and uncompressed (`Robocopy`). 
+The script can perform two types of backup: compressed (default or `7zip`) and uncompressed (`Robocopy`).
 
 #### Default
 By default, the script compresses every essential folder under the root of the Plex application data folder (`Plex Media Server`) and saves the compressed data as separate ZIP files. For better efficiency (in case the backup folder is remote, such as on a NAS share), it first compresses the data in a temporary local file and then moves the compressed file to a backup folder (you can compress the data and save the ZIP files directly to the backup folder by setting the value of the `TempZipFileDir` parameter to null or empty string). There is a problem with PowerShell's compression routine that fails to process files and folders with paths that are longer than 260 characters. If you get this error, use the `SpecialPlexAppDataSubDirs` parameter (in code or config file) to specify the folders that are too long (or parents of the subfolders or files that are too long) and PlexBackup will copy them as-is without using compression (by default, the following application data folder is not compressed: `Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated`).
@@ -27,12 +27,12 @@ You may want to play with either option to see which one works better for you.
 PlexBackup can run in the following modes (specified by the `Mode` switch or a corresponding shortcut):
 
 - `Backup`: the default mode that creates a new backup archive.
-- `Continue`: resumes an incomplete backup job or, in case of the `Robocopy` backup, resyncs the backup archive.
+- `Continue`: resumes an incomplete backup job or, in case of the `Robocopy` backup, re-syncs the backup archive.
 - `Restore`: restores Plex application data from a backup.
 
-If a previous backup does not exist, the `Continue` mode will behave just like the `Backup` mode. When running in the `Continue` mode for backup jobs that use compression, the script will skip the folders that already have the corresponding archive files. For the `Robocopy` backup, the `Continue` mode will syncronize the existing backup archive with the Plex application data files.
+If a previous backup does not exist, the `Continue` mode will behave just like the `Backup` mode. When running in the `Continue` mode for backup jobs that use compression, the script will skip the folders that already have the corresponding archive files. For the `Robocopy` backup, the `Continue` mode will synchronize the existing backup archive with the Plex application data files.
 
-In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. After the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process. The script will not run if the Plex Media Server is not active. To execute the script when Plex Media Server is not running, use the `Inactive` switch, but make sure you know what you are doing. 
+In all cases, before performing a backup or restore operation, PlexBackup will stop all Plex Windows services along with the Plex Media Server process. After the script completes the operation, it will restart them. You can use the `Shutdown` switch to tell the script not to restart the Plex Media Server process. The script will not run if the Plex Media Server is not active. To execute the script when Plex Media Server is not running, use the `Inactive` switch, but make sure you know what you are doing.
 
 ### Plex Windows Registry key
 To make sure PlexBackup saves and restores the right registry key, run it under the same account as Plex Media Server runs. The registry key will be backed up every time a backup job runs. If the backup folder does not contain the backup registry key file, the Plex registry key will not be imported on a restore.
@@ -47,8 +47,8 @@ Get-ExecutionPolicy
 ```
 If the execution policy does not allow running scripts, do the following:
 
-- Start Windows PowerShell with the "Run as Administrator" option. 
-- Run the following command: 
+- Start Windows PowerShell with the "Run as Administrator" option.
+- Run the following command:
 
 ```PowerShell
 Set-ExecutionPolicy RemoteSigned
@@ -116,7 +116,10 @@ A config file must use [JSON formatting](https://www.json.org/), such as:
     "SaveCredential": { "value": true },
     "Anonymous": { "value": null },
     "SendLogFile": { "value": true },
-    "ArchiverPath": { "value": null }
+    "ArchiverPath": { "value": null },
+    "ModulePath": { "value": null },
+    "WakeUpDir": { "value": null },
+    "Logoff": { "value": null }
 }
 ```
 The `_meta` element describes the file and the file structure. It does not include any configuration settings. The important attributes  of the `_meta` element are:
@@ -162,7 +165,7 @@ To receive a copy of the log file along with the email notification, set the `Se
 - `OnSuccess`: only send the log file if no error occurs
 
 #### SMTP server
-When sending email notifications, Plex backup will need to know how to connect to the SMTP server. You can specify the server via the `SmtpServer` parameter, such as: `-SmtpServer smtp.gmail.com `. If the server is using a non-default SMTP port, use the `Port` parameter to specify the port, such as; `-Port 587`. If you want your message to be sent over encrypted (SSL) channel, set the `UseSsl` switch. 
+When sending email notifications, Plex backup will need to know how to connect to the SMTP server. You can specify the server via the `SmtpServer` parameter, such as: `-SmtpServer smtp.gmail.com `. If the server is using a non-default SMTP port, use the `Port` parameter to specify the port, such as; `-Port 587`. If you want your message to be sent over encrypted (SSL) channel, set the `UseSsl` switch.
 
 #### SMTP credentials
 If your SMTP server does not require explicit authentication, use the `Anonymous` switch to tell PlexBackup to ignore explicit credentials; otherwise, you can ask the script to prompt you for credentials by setting the `PromptForCredentials` switch. If you want these credentials saved in a file (with password encrypted using the computer- and user-specific key) so you do not need to enter them every time the script runs, use the `SaveCredentials` switch. You can specify the path to the credential file via the `CredentialFile` parameters but if you don't, the script will try to use the default file named after the running script with the `.xml` extension, such as `PlexBackup.ps1.xml`. You can also generate the credential file in advance by running the following PowerShell command:
@@ -171,7 +174,7 @@ If your SMTP server does not require explicit authentication, use the `Anonymous
 Get-Credential | Export-CliXml -Path "PathToFile.xml"
 ```
 
-IMPORTANT: Most public providers, such as Gmail, Yahoo, Hotmail, and so on, have special requirements that you need to meet before you can use their SMTP servers to send email. For example, to use Gmail's SMTP server, you need to do the following: 
+IMPORTANT: Most public providers, such as Gmail, Yahoo, Hotmail, and so on, have special requirements that you need to meet before you can use their SMTP servers to send email. For example, to use Gmail's SMTP server, you need to do the following:
 
 (a) If you have two-factor authentication or, as Google calls it _two-step verification_, enabled, you cannot use your own password, so you need to generate an application password and use it along with your Gmail email address (see [Sign in using App Passwords](https://support.google.com/mail/answer/185833?hl=en)).
 
@@ -223,21 +226,24 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
     [-Anonymous] `
     [-SendLogFile <String>] `
     [-NoLogo] `
-    [-Cls]
+    [-Cls] `
+    [-ModulePath <String>] `
+    [-WakeUpDir = <String>] `
+    [-Logoff] `
     [<CommonParameters>]
 ```
 ### Arguments
 
 `-Mode`
-    
+
 Specifies the mode of operation: `Backup` (default), `Continue`, or `Restore`. Alternatively, you can specify one of the shortcut switches: `-Backup`, `-Continue`, or `-Restore`. Keep in mind that the `Mode` parameter and the shortcut switches are mutually exclusive (i.e. you can use at most one).
 
 `-Type`
-    
+
 Specifies the the non-default backup type: `7zip` or `Robocopy`. Alternatively, you can specify a shortcut switch: `-SevenZip` or `-Robocopy`. Keep in mind that the `Type` parameter and the shortcut switches are mutually exclusive (i.e. you can use at most one). If neither the `-Type` nor any of the corresponding shortcut switches are specified, the default Windows compression will be used.
 
 `-ConfigFile`
-    
+
 Path to the optional custom config file (default: `.\PlexBackup.ps1.json`).
 
 `-PlexAppDataDir`
@@ -362,8 +368,20 @@ Supresses the version and copyright message normally displayed in the beginning 
 
 Clears the console screen in the beginning of the script run.
 
+
+`-ModulePath`
+
+Optional path to directory holding the modules used by this script. This can be useful if the script runs on the system with no or restricted access to the Internet. By default, the module path will point to the 'Modules' folder in the script's folder.
+
+`-WakeUpDir`
+
+Optional path to a remote share that may need to be woken up before starting Plex Media Service.
+
+`-Logoff`
+Specify this command-line switch to log off all user accounts (except the running one) before starting Plex Media Server. This may help address issues with remote drive mappings under the wrong credentials.
+
 `<CommonParameters>`
-    
+
 Common PowerShell parameters (the script is not using these explicitly).
 
 ## Returns
