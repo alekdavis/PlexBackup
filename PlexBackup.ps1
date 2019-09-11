@@ -190,9 +190,9 @@ Optional path to a remote share that may need to be woken up before starting Ple
 Specify this command-line switch to log off all user accounts (except the running one) before starting Plex Media Server. This may help address issues with remote drive mappings under the wrong credentials.
 
 .NOTES
-Version    : 1.6.0
+Version    : 1.6.1
 Author     : Alek Davis
-Created on : 2019-09-10
+Created on : 2019-09-11
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -663,7 +663,7 @@ function Log {
         }
     }
     else {
-        if ($textColor -eq -1) {
+        if ([int]$textColor -eq -1) {
             [System.ConsoleColor]$foregroundColor = [System.ConsoleColor]::White
         }
         else {
