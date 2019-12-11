@@ -190,9 +190,9 @@ Optional path to a remote share that may need to be woken up before starting Ple
 Specify this command-line switch to log off all user accounts (except the running one) before starting Plex Media Server. This may help address issues with remote drive mappings under the wrong credentials.
 
 .NOTES
-Version    : 1.6.1
+Version    : 1.6.2
 Author     : Alek Davis
-Created on : 2019-09-11
+Created on : 2019-12-11
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019 Alek Davis
@@ -1350,43 +1350,61 @@ function FormatEmail {
 <table style='#STYLE_PAGE#'>
 <tr>
 <td>
-<tr><td style='#STYLE_TEXT#'>Plex backup script</td></tr>
-<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_PATH#</td></tr>
-<tr><td style='#STYLE_TEXT#'>completed the</td></tr>
-<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_MODE#</td></tr>
-<tr><td style='#STYLE_TEXT#'>operation on</td></tr>
-<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_COMPUTER_NAME#</td></tr>
-<tr><td style='#STYLE_TEXT#'>with</td></tr>
-<tr><td style='#STYLE_RESULT#'>#VALUE_RESULT#</td></tr>
-<tr><td style='#STYLE_TEXT#'>The script started at</td></tr>
-<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_START_TIME#</td></tr>
-<tr><td style='#STYLE_TEXT#'>and ended at</td></tr>
-<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_END_TIME#</td></tr>
-<tr><td style='#STYLE_TEXT#'>running for (hr:min:sec.msec)</td></tr>
-<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_DURATION#</td></tr>
-<tr><td style='#STYLE_TEXT#'>The backup folder is at</td></tr>
-<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_DIR#</td></tr>
-<tr><td style='#STYLE_TEXT#'>containing</td></tr>
-<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_OBJECTS# objects</td></tr>
-<tr><td style='#STYLE_TEXT#'>and</td></tr>
-<tr><td style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_SIZE# GB of data</td></tr>
-<tr><td style='#STYLE_ERROR#'>Error info</td></tr>
-<tr><td style='#STYLE_VAR_ERROR#'>#VALUE_ERROR_INFO#</td></tr>
+<span style='#STYLE_TEXT#'>Plex backup script</span>
+<span style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_PATH#</span>
+<span style='#STYLE_TEXT#'>completed the</span>
+<span style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_MODE#</span>
+<span style='#STYLE_TEXT#'>operation on</span>
+<span style='#STYLE_VAR_TEXT#'>#VALUE_COMPUTER_NAME#</span>
+<span style='#STYLE_TEXT#'>with the following result:</span>
+</td>
+</tr>
+<tr>
+<td style='#STYLE_PARA#'>
+<span style='#STYLE_RESULT#'>#VALUE_RESULT#</span>
+</td>
+</tr>
+<tr>
+<td style='#STYLE_PARA#'>
+<span style='#STYLE_TEXT#'>The script started at</span>
+<span style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_START_TIME#</span>
+<span style='#STYLE_TEXT#'>and ended at</span>
+<span style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_END_TIME#</span>
+<span style='#STYLE_TEXT#'>running for</span>
+<span style='#STYLE_VAR_TEXT#'>#VALUE_SCRIPT_DURATION#</span>
+<span style='#STYLE_TEXT#'>(hr:min:sec.msec).</span>
+</td>
+</tr>
+<tr>
+<td style='#STYLE_PARA#'>
+<span style='#STYLE_TEXT#'>The backup folder</span>
+<span style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_DIR#</span>
+<span style='#STYLE_TEXT#'>contains</span>
+<span style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_OBJECTS#</span>
+<span style='#STYLE_TEXT#'>objects</span>
+<span style='#STYLE_TEXT#'>and</span>
+<span style='#STYLE_VAR_TEXT#'>#VALUE_BACKUP_SIZE# GB</span>
+<span style='#STYLE_TEXT#'>of data.</span>
+</td>
+</tr>
+<tr>
+<td style='#STYLE_ERROR_PARA#'>
+<span style='#STYLE_ERROR#'>#VALUE_ERROR_INFO#</span>
 </td>
 </tr>
 </table>
 </body>
 </html>
 "
-    $styleTextColor     = 'color: #363636;'
-    $styleSuccessColor  = 'color: #008800;'
-    $styleErrorColor    = 'color: #cc0000;'
+    $styleTextColor     = 'color: #444444;'
+    $styleSuccessColor  = 'color: #6aa84f;'
+    $styleErrorColor    = 'color: #cc2200;'
 
     $styleResultColor   = ''
     $resultText         = ''
 
     $styleErrorInfo     = 'mso-hide: all;overflow: hidden;max-height: 0;display: none;line-height: 0;visibility: hidden;'
-    $styleVarErrorInfo  = $styleErrorInfo
+    $styleErrorParagraph= $styleErrorInfo
 
     if ($success) {
         $styleResultColor = $styleSuccessColor
@@ -1397,33 +1415,31 @@ function FormatEmail {
         $resultText = 'ERROR'
     }
 
-    $stylePage               = 'max-width: 800px;border: 0;'
-    $styleFontFamily         = 'font-family: Verdana, Trebuchet MS, Arial;'
-    $styleIndent             = 'padding-left: 24px;'
-    $styleParagraph          = ''
-    $styleVarParagraph       = $styleParagraph + $styleIndent
-    $styleResultParagraph    = $styleVarParagraph
-    $styleTextFontSize       = 'font-size: 14px;'
+    $stylePage               = 'max-width: 800px;border: 0;padding: 0;'
+    $styleFontFamily         = 'font-family: Arial,Helvetica,sans-serif;'
+    $styleParagraph          = 'padding-top: 8px;'
+    $styleTextFontSize       = 'font-size: 13px;'
     $styleResultTextFontSize = 'font-size: 18px;'
     $styleTextFont           = $styleFontFamily + $styleTextFontSize + $styleTextColor
     $styleVarTextFont        = $styleTextFont + 'font-weight: bold;'
     $styleResultTextFont     = $styleFontFamily + $styleResultTextFontSize + $styleResultColor + 'font-weight: bold;'
 
-    $styleText               = $styleParagraph + $styleTextFont
-    $styleVarText            = $styleVarParagraph +  $styleVarTextFont
-    $styleResult             = $styleResultParagraph + $styleResultTextFont
+    $styleText               = $styleTextFont
+    $styleVarText            = $styleVarTextFont
+    $styleResult             = $styleResultTextFont
 
     if ($errorInfo) {
         $styleErrorInfo      = $styleText
-        $styleVarErrorInfo   = $styleVarText
+        $styleErrorParagraph = $styleParagraph
     }
 
     $emailTokens = @{
         STYLE_PAGE              = $stylePage
+        STYLE_PARA              = $styleParagraph
         STYLE_TEXT              = $styleText
         STYLE_VAR_TEXT          = $styleVarText
         STYLE_ERROR             = $styleErrorInfo
-        STYLE_VAR_ERROR         = $styleVarErrorInfo
+        STYLE_ERROR_PARA        = $styleErrorParagraph
         STYLE_RESULT            = $styleResult
         VALUE_COMPUTER_NAME     = $computerName
         VALUE_SCRIPT_PATH       = $scriptPath
@@ -3067,7 +3083,7 @@ $BackupDirName, $BackupDirPath =
     GetBackupDirNameAndPath `
         $Mode `
         $BackupRootDir `
-        $BackupdDirNameFormat `
+        $BackupDirNameFormat `
         $RegexBackupDirNameFormat `
         $BackupDirPath `
         $startTime
