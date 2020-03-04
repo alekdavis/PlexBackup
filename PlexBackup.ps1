@@ -189,13 +189,16 @@ Optional path to a remote share that may need to be woken up before starting Ple
 .PARAMETER Logoff
 Specify this command-line switch to log off all user accounts (except the running one) before starting Plex Media Server. This may help address issues with remote drive mappings under the wrong credentials.
 
+.PARAMETER Reboot
+Reboots the computer after successful operation.
+
 .NOTES
-Version    : 1.6.2
+Version    : 1.6.3
 Author     : Alek Davis
-Created on : 2019-12-11
+Created on : 2020-03-03
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
-Copyright  : (c) 2019 Alek Davis
+Copyright  : (c) 2020 Alek Davis
 
 .LINK
 https://github.com/alekdavis/PlexBackup
@@ -437,7 +440,10 @@ param (
     $WakeUpDir = $null,
 
     [switch]
-    $Logoff
+    $Logoff,
+    
+    [switch]
+    $Reboot
 )
 
 #-----------------------------[ DECLARATIONS ]-----------------------------
@@ -1805,7 +1811,12 @@ function StartPlexMediaServer {
         LogMessage (Indent $plexServerExePath)
 
         try {
-            Start-Process $plexServerExePath -LoadUserProfile
+	    # Try to restart PMS not as Administrator.
+	    # Starting it as Administrator seems to mess up share mappings.
+	    # https://stackoverflow.com/questions/20218076/batch-file-drop-elevated-privileges-run-a-command-as-original-user
+	    
+            # Start-Process $plexServerExePath -LoadUserProfile
+	    runas /trustlevel:0x20000 "$plexServerExePath"
         }
         catch {
             LogException $_
@@ -3558,6 +3569,9 @@ if (MustSendMail $SendMail $Mode $success) {
 LogMessage "Done."
 
 if ($success) {
+    if ($Reboot) {
+        Restart-Computer
+    }
     exit $EXITCODE_SUCCESS
 }
 else {
