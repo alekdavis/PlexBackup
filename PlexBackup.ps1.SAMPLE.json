@@ -184,5 +184,8 @@
     },
     "Logoff": {
         "value": null
+    },
+    "Reboot": {
+        "value": null
     }
 }
