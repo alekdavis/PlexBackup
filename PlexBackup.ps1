@@ -193,9 +193,9 @@ Specify this command-line switch to log off all user accounts (except the runnin
 Reboots the computer after successful operation.
 
 .NOTES
-Version    : 1.6.3
+Version    : 1.6.4
 Author     : Alek Davis
-Created on : 2020-03-03
+Created on : 2020-03-06
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -1775,7 +1775,27 @@ function StopPlexMediaServer {
         LogMessage (Indent $plexServerExeFileName)
 
         try {
-            taskkill /f /im $plexServerExeFileName /t >$nul 2>&1
+            # First, let's try to close PMS gracefully.
+            taskkill /im $plexServerExeFileName >$nul 2>&1
+
+            $timeoutSeconds = 60
+
+            # Keep checking to see if PMS is not longer running for at most 60 seconds.
+            do {
+                # Sleep for a second.
+                Start-Sleep -Seconds 1
+
+                $timeoutSeconds = $timeoutSeconds - 1
+
+            } while (($timeoutSeconds -gt 0) -and
+                (Get-Process -ErrorAction SilentlyContinue | 
+                    Where-Object {$_.Path -match $plexServerExeFileName + "$" }))
+
+            # If PMS is still running, kill it along with all child processes forcefully.
+            if (Get-Process -ErrorAction SilentlyContinue | 
+                    Where-Object {$_.Path -match $plexServerExeFileName + "$" }) {
+                taskkill /f /im $plexServerExeFileName /t >$nul 2>&1
+            }
         }
         catch {
             LogException $_
