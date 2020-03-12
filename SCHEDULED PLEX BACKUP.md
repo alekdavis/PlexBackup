@@ -64,12 +64,12 @@ The program/script __arguments__ of the task action would be something like:
 
 ## Issues
 
-There is an issue with Windows Scheduled Tasks that for some reason may results in PMS connecting to remote shares (such as NAS shares) hosting media files or connecting to the shares under the wrong user context. The problem does not occur when running the backup interactively, only when it runs as a scheduled task. I am still not sure what the root cause is, but to address the problem, try using the following command-line options:
+There is an issue with the Windows Task Scheduler that for some reason may prevent Plex Media Server (PMS) from connecting to the remote shares (such as NAS shares) hosting media files or force connection under a wrong security context. The problem does not occur when running the backup interactively, only when it runs as a scheduled task. I am still not sure what the root cause is, but to address the problem, try using the following command-line options:
 
 - `Logoff`: logs off all other logged in users (I noticed that it normally happens when other users with different privileges are logged in)
 - `Reboot`: reboot the computer after successful operation (if the `Logoff` option does not help, try rebooting the computer; notice that this may prompt user to accept the restart and keep waiting until the user responds)
 - `ForceReboot`: reboot the computer without the prompt (if all else fails try this option)
 
-Keep in mind that unless you run PMS as a service, it would require the user to log on for PMS to start. You can set up your system to auto log in the PMS user, but when you do, make sure that you also lock the session. Here is an article explaining how this can be done:
+Keep in mind that unless you run PMS as a service, it would require the user to log on (otherwise, PMS will not start). You can set up your system to auto log on as the PMS user account, but if you do, make sure that you lock Windows after logging on. Here is an article explaining how this can be done:
 
 [Automatically log in to Windows and then lock straight away](https://softwarerecs.stackexchange.com/questions/9825/automatically-log-in-to-windows-and-then-lock-straight-away)
