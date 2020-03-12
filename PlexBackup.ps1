@@ -131,7 +131,7 @@ Set this switch to not start the Plex Media Server process at the end of the ope
 .PARAMETER Inactive
 When set, allows the script to continue if Plex Media Server is not running.
 
-.PARAMETER Forces
+.PARAMETER Force
 Forces restore to ignore version mismatch between the current version of Plex Media Server and the version of Plex Media Server active during backup.
 
 .PARAMETER SendMail
@@ -190,12 +190,15 @@ Optional path to a remote share that may need to be woken up before starting Ple
 Specify this command-line switch to log off all user accounts (except the running one) before starting Plex Media Server. This may help address issues with remote drive mappings under the wrong credentials.
 
 .PARAMETER Reboot
-Reboots the computer after successful operation.
+Reboots the computer after successful operation after the successfull completion of the operation.
+
+.PARAMETER ForceReboot
+Forces an immediate restart of the computer after the successfull completion of the operation.
 
 .NOTES
-Version    : 1.6.4
+Version    : 1.6.5
 Author     : Alek Davis
-Created on : 2020-03-06
+Created on : 2020-03-12
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -379,6 +382,7 @@ param (
     [switch]
     $Shutdown,
 
+    [Alias("ForceRestore")]
     [switch]
     $Force,
 
@@ -412,8 +416,8 @@ param (
     [switch]
     $PromptForCredential,
 
-    [switch]
     [Alias("Save")]
+    [switch]
     $SaveCredential,
 
     [switch]
@@ -441,9 +445,12 @@ param (
 
     [switch]
     $Logoff,
-    
+
     [switch]
-    $Reboot
+    $Reboot,
+
+    [switch]
+    $ForceReboot
 )
 
 #-----------------------------[ DECLARATIONS ]-----------------------------
@@ -1788,11 +1795,11 @@ function StopPlexMediaServer {
                 $timeoutSeconds = $timeoutSeconds - 1
 
             } while (($timeoutSeconds -gt 0) -and
-                (Get-Process -ErrorAction SilentlyContinue | 
+                (Get-Process -ErrorAction SilentlyContinue |
                     Where-Object {$_.Path -match $plexServerExeFileName + "$" }))
 
             # If PMS is still running, kill it along with all child processes forcefully.
-            if (Get-Process -ErrorAction SilentlyContinue | 
+            if (Get-Process -ErrorAction SilentlyContinue |
                     Where-Object {$_.Path -match $plexServerExeFileName + "$" }) {
                 taskkill /f /im $plexServerExeFileName /t >$nul 2>&1
             }
@@ -1834,7 +1841,7 @@ function StartPlexMediaServer {
 	    # Try to restart PMS not as Administrator.
 	    # Starting it as Administrator seems to mess up share mappings.
 	    # https://stackoverflow.com/questions/20218076/batch-file-drop-elevated-privileges-run-a-command-as-original-user
-	    
+
             # Start-Process $plexServerExePath -LoadUserProfile
 	    runas /trustlevel:0x20000 "$plexServerExePath"
         }
@@ -3588,9 +3595,16 @@ if (MustSendMail $SendMail $Mode $success) {
 
 LogMessage "Done."
 
+# Upon success, we may need to reboot the computer.
 if ($success) {
-    if ($Reboot) {
-        Restart-Computer
+    if ($Reboot -or $ForceReboot) {
+        if ($ForceReboot) {
+            # Reboot computer immediately.
+            Restart-Computer -Force
+        } else {
+            # Reboot computer normally.
+            Restart-Computer
+        }
     }
     exit $EXITCODE_SUCCESS
 }

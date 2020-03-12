@@ -34,7 +34,7 @@ The following screenshots are just for your reference. You may want to adjust th
 
 ![General](https://user-images.githubusercontent.com/2113681/52495321-2dc46080-2b85-11e9-8f27-194950df07da.PNG)
 
-## Triggers 
+## Triggers
 
 ![Triggers](https://user-images.githubusercontent.com/2113681/52493677-efc53d80-2b80-11e9-9918-98643313a70e.PNG)
 
@@ -61,3 +61,15 @@ The program/script __arguments__ of the task action would be something like:
 ## Settings
 
 ![Settings](https://user-images.githubusercontent.com/2113681/52493729-066b9480-2b81-11e9-8130-6965da7de755.PNG)
+
+## Issues
+
+There is an issue with Windows Scheduled Tasks that for some reason may results in PMS connecting to remote shares (such as NAS shares) hosting media files or connecting to the shares under the wrong user context. The problem does not occur when running the backup interactively, only when it runs as a scheduled task. I am still not sure what the root cause is, but to address the problem, try using the following command-line options:
+
+- `Logoff`: logs off all other logged in users (I noticed that it normally happens when other users with different privileges are logged in)
+- `Reboot`: reboot the computer after successful operation (if the `Logoff` option does not help, try rebooting the computer; notice that this may prompt user to accept the restart and keep waiting until the user responds)
+- `ForceReboot`: reboot the computer without the prompt (if all else fails try this option)
+
+Keep in mind that unless you run PMS as a service, it would require the user to log on for PMS to start. You can set up your system to auto log in the PMS user, but when you do, make sure that you also lock the session. Here is an article explaining how this can be done:
+
+[Automatically log in to Windows and then lock straight away](https://softwarerecs.stackexchange.com/questions/9825/automatically-log-in-to-windows-and-then-lock-straight-away)

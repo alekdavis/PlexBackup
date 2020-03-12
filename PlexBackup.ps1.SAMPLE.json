@@ -187,5 +187,8 @@
     },
     "Reboot": {
         "value": null
+    },
+    "ForceReboot": {
+        "value": null
     }
 }
