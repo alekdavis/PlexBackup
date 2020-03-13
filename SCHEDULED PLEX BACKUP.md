@@ -62,6 +62,10 @@ The program/script __arguments__ of the task action would be something like:
 
 ![Settings](https://user-images.githubusercontent.com/2113681/52493729-066b9480-2b81-11e9-8130-6965da7de755.PNG)
 
+##  Tip
+
+When setting up the Plex backup schedule, make sure the backup job does not run at the same time as Plex Media Server's (PMS') scheduled tasks (check Settings - Scheduled Tasks under your PMS instance).
+
 ## Issues
 
 There is an issue with the Windows Task Scheduler that for some reason may prevent Plex Media Server (PMS) from connecting to the remote shares (such as NAS shares) hosting media files or force connection under a wrong security context. The problem does not occur when running the backup interactively, only when it runs as a scheduled task. I am still not sure what the root cause is, but to address the problem, try using the following command-line options:
