@@ -196,7 +196,7 @@ Reboots the computer after successful operation after the successfull completion
 Forces an immediate restart of the computer after the successfull completion of the operation.
 
 .NOTES
-Version    : 1.6.6
+Version    : 1.6.7
 Author     : Alek Davis
 Created on : 2020-03-16
 License    : MIT License
@@ -457,6 +457,7 @@ param (
 
 # The following Plex application folders do not need to be backed up.
 $ExcludePlexAppDataDirs = @(
+    "Cache",
     "Diagnostics",
     "Crash Reports",
     "Updates",
