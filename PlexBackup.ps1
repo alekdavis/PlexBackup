@@ -196,9 +196,9 @@ Reboots the computer after successful operation after the successfull completion
 Forces an immediate restart of the computer after the successfull completion of the operation.
 
 .NOTES
-Version    : 1.6.5
+Version    : 1.6.6
 Author     : Alek Davis
-Created on : 2020-03-12
+Created on : 2020-03-16
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -3557,7 +3557,7 @@ else {
     $errorInfo = "For error details, check the log file (make sure the script runs with logging turned on)."
 }
 
-$backupInfo = Get-ChildItem -Recurse $BackupDirPath | Measure-Object -Property Length -Sum
+$backupInfo = Get-ChildItem -Recurse -File $BackupDirPath | Measure-Object -Property Length -Sum
 
 if (MustSendMail $SendMail $Mode $success) {
     $mailBody = FormatEmail `
