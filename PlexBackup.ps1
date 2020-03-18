@@ -190,15 +190,15 @@ Optional path to a remote share that may need to be woken up before starting Ple
 Specify this command-line switch to log off all user accounts (except the running one) before starting Plex Media Server. This may help address issues with remote drive mappings under the wrong credentials.
 
 .PARAMETER Reboot
-Reboots the computer after successful operation after the successfull completion of the operation.
+Reboots the computer after a successful backup operation (ignored on restore).
 
 .PARAMETER ForceReboot
-Forces an immediate restart of the computer after the successfull completion of the operation.
+Forces an immediate restart of the computer after a successfull backup operation (the 'Reboot' switch is ignored).
 
 .NOTES
-Version    : 1.6.7
+Version    : 1.6.8
 Author     : Alek Davis
-Created on : 2020-03-16
+Created on : 2020-03-17
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -482,7 +482,10 @@ $PlexServerExePath = $null
 # DO NOT CHANGE THE FOLLOWING SETTINGS:
 
 # Plex registry key path.
-$PlexRegKey = "HKCU\Software\Plex, Inc.\Plex Media Server"
+$PlexRegKeys = @(
+    "HKCU\Software\Plex, Inc.\Plex Media Server",
+    "HKU\.DEFAULT\Software\Plex, Inc.\Plex Media Server"
+)
 
 # Backup folder format: YYYYMMDDhhmmss
 $RegexBackupDirNameFormat = "^\d{14}$"
@@ -494,10 +497,10 @@ $BackupDirNameFormat = "yyyyMMddHHmmss"
 $ConfigFileExt = ".json"
 
 # Subfolders in the backup directory.
-$SubDirFiles    = "0"
-$SubDirFolders  = "1"
-$SubDirRegistry = "2"
-$SubDirSpecial  = "3"
+$SubDirFiles    = "1"
+$SubDirFolders  = "2"
+$SubDirRegistry = "3"
+$SubDirSpecial  = "4"
 
 # Name of the common backup files.
 $BackupFileName = "Plex"
@@ -2608,8 +2611,6 @@ function RestorePlexFromBackup {
         [string]
         $plexAppDataDir,
         [string]
-        $plexRegKey,
-        [string]
         $backupRootDir,
         [string]
         $backupDirName,
@@ -2714,34 +2715,35 @@ function RestorePlexFromBackup {
         }
     }
 
-    # Import Plex registry key.
-    $backupRegKeyFilePath = (Join-Path (Join-Path `
-        $backupDirPath $subDirRegistry) ($backupFileName + $regFileExt))
+    # Import Plex registry keys.
+    $backupRegKeyFiles = Get-ChildItem `
+        (Join-Path $backupDirPath $subDirRegistry) -File  |
+            Where-Object { $_.Extension -eq $regFileExt }
 
-    if (!(Test-Path $backupRegKeyFilePath -PathType Leaf)) {
-        LogWarning "Cannot find Plex Windows registry key file:"
-        LogWarning (Indent $backupRegKeyFilePath)
-        LogWarning "Plex Windows registry key will not be restored."
-    }
-    else {
-        LogMessage "Restoring Plex Windows registry key from:"
-        LogMessage (Indent backupRegKeyFilePath)
+    # Restore each Plex app data subfolder from the corresponding backup archive file.
+    $i = 1
+    foreach ($backupRegKeyFile in $backupRegKeyFiles) {
+        $backupRegKeyFilePath = $backupRegKeyFile.FullName
+
+        if ($i -eq 1) {
+            LogMessage "Restoring Plex Windows registry key(s) from:"
+
+            $i++
+        }
+
+        LogMessage (Indent $backupRegKeyFilePath)
 
         try {
             reg import $backupRegKeyFilePath *>&1 | Out-Null
         }
         catch {
-            if ($_.Exception -and
-                $_.Exception.Message -and
-                ($_.Exception.Message -match "^The operation completed successfully")) {
-                # This is a bogus error that only appears in PowerShell ISE, so ignore.
-                return $true
-            }
-            else {
-                LogException $_
-            }
+            # This is a bogus error that only appears in PowerShell ISE, so ignore.
+            if (-not ($_.Exception -and $_.Exception.Message -and
+                ($_.Exception.Message -match "^The operation completed successfully"))) {
 
-            return $false
+                LogException $_
+                return $false
+            }
         }
     }
 
@@ -2757,8 +2759,8 @@ function CreatePlexBackup {
         $mode,
         [string]
         $plexAppDataDir,
-        [string]
-        $plexRegKey,
+        [string[]]
+        $plexRegKeys,
         [string]
         $backupRootDir,
         [string]
@@ -2995,22 +2997,27 @@ function CreatePlexBackup {
 
     SavePmsVersion $pmsVersion $pmsVersionPath
 
-    # Export Plex registry key.
-    $plexRegKeyFilePath = ((Join-Path (Join-Path $backupDirPath $subDirRegistry) `
-        ($backupFileName + $regFileExt)))
+    # Export Plex registry keys.
+    $i = 1
+    foreach ($plexRegKey in $plexRegKeys) {
+        $plexRegKeyFilePath = ((Join-Path (Join-Path $backupDirPath $subDirRegistry) `
+            ($backupFileName + $i.ToString() + $regFileExt)))
 
-    LogMessage "Backing up registry key:"
-    LogMessage (Indent $plexRegKey)
-    LogMessage "to:"
-    LogMessage (Indent $plexRegKeyFilePath)
+        $i++
 
-    try {
-        Invoke-Command ` {reg export $plexRegKey $plexRegKeyFilePath /y *>&1 | Out-Null}
-    }
-    catch {
-        LogException $_
+        LogMessage "Backing up registry key:"
+        LogMessage (Indent $plexRegKey)
+        LogMessage "to:"
+        LogMessage (Indent $plexRegKeyFilePath)
 
-        # Non-critical error; can continue.
+        try {
+            reg export $plexRegKey $plexRegKeyFilePath /y *>&1 | Out-Null
+        }
+        catch {
+            LogException $_
+
+            # Non-critical error; can continue.
+        }
     }
 
     $Error.Clear()
@@ -3452,7 +3459,6 @@ if ($PlexServerExePath) {
 if ($Mode -eq "Restore") {
     $success = RestorePlexFromBackup `
         $PlexAppDataDir `
-        $PlexRegKey `
         $BackupRootDir `
         $BackupDirName `
         $BackupDirPath `
@@ -3482,10 +3488,10 @@ else {
     $success = CreatePlexBackup `
         $Mode `
         $PlexAppDataDir `
-        $PlexRegKey `
+        $PlexRegKeys `
         $BackupRootDir `
         $BackupDirName `
-        $BackupdDirPath `
+        $BackupDirPath `
         $TempZipFileDir `
         $ExcludePlexAppDataDirs `
         $ExcludePlexAppDataFiles `
@@ -3511,7 +3517,7 @@ else {
 # Log off all currently logged on users except the current user.
 if ($Logoff) {
     try {
-        quser | Select-String "Disc" | ForEach {logoff ($_.tostring() -split ' +')[2]}
+        quser | Select-String "Disc" | ForEach {logoff ($_.ToString() -split ' +')[2]}
     }
     catch {
         LogException $_
@@ -3599,12 +3605,15 @@ LogMessage "Done."
 # Upon success, we may need to reboot the computer.
 if ($success) {
     if ($Reboot -or $ForceReboot) {
-        if ($ForceReboot) {
-            # Reboot computer immediately.
-            Restart-Computer -Force
-        } else {
-            # Reboot computer normally.
-            Restart-Computer
+        # Do not reboot after restore.
+        if ($Mode -ne "Restore") {
+            if ($ForceReboot) {
+                # Reboot computer immediately.
+                Restart-Computer -Force
+            } else {
+                # Reboot computer normally.
+                Restart-Computer
+            }
         }
     }
     exit $EXITCODE_SUCCESS
