@@ -119,7 +119,9 @@ A config file must use [JSON formatting](https://www.json.org/), such as:
     "ArchiverPath": { "value": null },
     "ModulePath": { "value": null },
     "WakeUpDir": { "value": null },
-    "Logoff": { "value": null }
+    "Logoff": { "value": null },
+    "Reboot": { "value": null },
+    "ForseReboot": { "value": null }
 }
 ```
 The `_meta` element describes the file and the file structure. It does not include any configuration settings. The important attributes  of the `_meta` element are:
