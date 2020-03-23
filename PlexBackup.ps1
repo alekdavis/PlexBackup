@@ -5,7 +5,7 @@
 Backs up or restores Plex application data files and registry keys on a Windows system.
 
 .DESCRIPTION
-The script can run in four modes:
+The script can run in these modes:
 
 - Backup (initiates a new backup),
 - Continue (continues a previous backup),
