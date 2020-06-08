@@ -196,9 +196,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (the 'Reboot' switch is ignored).
 
 .NOTES
-Version    : 1.6.8
+Version    : 1.6.9
 Author     : Alek Davis
-Created on : 2020-03-17
+Created on : 2020-05-23
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -479,6 +479,29 @@ $PlexServerExeFileName = "Plex Media Server.exe"
 # If Plex Media Server is not running, define path to the executable here.
 $PlexServerExePath = $null
 
+# Subfolders that cannot be archived because the path may be too long.
+# Long (over 260 characters) paths cause Compress-Archive to fail,
+# so before running the archival steps, we will move these folders to
+# the backup directory, and copy it back once the archival step completes.
+# On restore, we'll copy these folders from the backup directory to the
+# Plex app data folder.
+$SpecialPlexAppDataSubDirs =
+@(
+    "Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated"
+)
+
+# 7-zip command-line option for compression.
+$ArchiverOptionsCompress =
+@(
+    $null
+)
+
+# 7-zip command-line option for decompression.
+$ArchiverOptionsExpand =
+@(
+    "-aoa"
+)
+
 # DO NOT CHANGE THE FOLLOWING SETTINGS:
 
 # Plex registry key path.
@@ -492,9 +515,6 @@ $RegexBackupDirNameFormat = "^\d{14}$"
 
 # Format of the backup folder name (so it can be easily sortable).
 $BackupDirNameFormat = "yyyyMMddHHmmss"
-
-# Extension of config file.
-$ConfigFileExt = ".json"
 
 # Subfolders in the backup directory.
 $SubDirFiles    = "1"
@@ -510,31 +530,24 @@ $ZipFileExt = ".zip"
 $7ZipFileExt= ".7z"
 $RegFileExt = ".reg"
 
-# Subfolders that cannot be archived because the path may be too long.
-# Long (over 260 characters) paths cause Compress-Archive to fail,
-# so before running the archival steps, we will move these folders to
-# the backup directory, and copy it back once the archival step completes.
-# On restore, we'll copy these folders from the backup directory to the
-# Plex app data folder.
-$SpecialPlexAppDataSubDirs =
-@(
-    "Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated"
-)
+# Mutex name (to enforce single instance).
+$MutexName = "PlexBackupJob01b84706380a44f58002fd53b48ea617"
 
 #------------------------------[ EXIT CODES]-------------------------------
 
-$EXITCODE_SUCCESS               =  0 # success
-$EXITCODE_ERROR                 =  1 # error during backup or restore operation
-$EXITCODE_ERROR_CONFIG          =  2 # error processing config file
-$EXITCODE_ERROR_BACKUPDIR       =  3 # problem determining or setting backup folder
-$EXITCODE_ERROR_LOG             =  4 # problem with log file(s)
-$EXITCODE_ERROR_GETPMSEXE       =  5 # cannot determine path to PMS executable
-$EXITCODE_ERROR_GETSERVICES     =  6 # cannot read Plex Windows services
-$EXITCODE_ERROR_STOPSERVICES    =  7 # cannot stop Plex Windows services
-$EXITCODE_ERROR_STOPPMSEXE      =  8 # cannot stop PMS executable file
-$EXITCODE_ERROR_ARCHIVERPATH    =  9 # archiver path undefined or file missing
-$EXITCODE_ERROR_VERSIONMISMATCH = 10 # archiver path undefined or file missing
-$EXITCODE_ERROR_MODULE          = 11 # cannot load module
+$EXITCODE_SUCCESS                 =  0 # success
+$EXITCODE_ERROR                   =  1 # error during backup or restore operation
+$EXITCODE_ERROR_CONFIG            =  2 # error processing config file
+$EXITCODE_ERROR_BACKUPDIR         =  3 # problem determining or setting backup folder
+$EXITCODE_ERROR_LOG               =  4 # problem with log file(s)
+$EXITCODE_ERROR_GETPMSEXE         =  5 # cannot determine path to PMS executable
+$EXITCODE_ERROR_GETSERVICES       =  6 # cannot read Plex Windows services
+$EXITCODE_ERROR_STOPSERVICES      =  7 # cannot stop Plex Windows services
+$EXITCODE_ERROR_STOPPMSEXE        =  8 # cannot stop PMS executable file
+$EXITCODE_ERROR_ARCHIVERPATH      =  9 # archiver path undefined or file missing
+$EXITCODE_ERROR_VERSIONMISMATCH   = 10 # archiver path undefined or file missing
+$EXITCODE_ERROR_MODULE            = 11 # cannot load module
+$EXITCODE_ERROR_DUPLICATEINSTANCE = 12 # backup is already running
 
 #------------------------------[ FUNCTIONS ]-------------------------------
 
@@ -860,6 +873,42 @@ function LogMessage {
         $script:Log     = $false
         $script:LogFile = $null
     }
+}
+
+#--------------------------------------------------------------------------
+# StartSingleInstance
+#   Checks if the script is already running.
+function StartSingleInstance {
+    param (
+        [string]
+        $mutexName
+    )
+
+    [bool]$success = $false
+    [System.Threading.Mutex]$mutex = New-Object System.Threading.Mutex($true, $mutexName, [ref] $success)
+    if ($success) {
+        return $mutex
+    }
+
+    return $null
+}
+
+#--------------------------------------------------------------------------
+# StopSingleInstance
+#   Releases mutex that enforces single instance.
+function StopSingleInstance {
+    param (
+        [System.Threading.Mutex]
+        $mutex
+    )
+
+    if ($mutex) {
+        $mutex.ReleaseMutex()
+        $mutex.Dispose()
+        $mutex = $null
+    }
+
+    return $null
 }
 
 #--------------------------------------------------------------------------
@@ -1275,7 +1324,7 @@ function SendMail {
         [string]
         $body,
         [string[]]
-        $attachment,
+        $attachments,
         [string]
         $smtpServer,
         [int]
@@ -1306,8 +1355,8 @@ function SendMail {
         $params.Add("BodyAsHtml", $true)
     }
 
-    if ($Attachment -and ($Attachment.Count -gt 0)) {
-        $params.Add("Attachment", $attachment)
+    if ($attachments -and ($attachments.Count -gt 0)) {
+        $params.Add("Attachment", $attachments)
     }
 
     try {
@@ -1590,7 +1639,7 @@ function GetBackupDirNameAndPath {
         [string]
         $backupRootDir,
         [string]
-        $backupdDirNameFormat,
+        $backupDirNameFormat,
         [string]
         $regexBackupDirNameFormat,
         [string]
@@ -2043,7 +2092,9 @@ function DecompressPlexAppDataFolder {
         [string]
         $zipFileExt,
         [string]
-        $archiverPath
+        $archiverPath,
+        [string[]]
+        $archiverOptionsExpand
     )
     $backupZipFilePath = $backupZipFile.FullName
 
@@ -2087,7 +2138,17 @@ function DecompressPlexAppDataFolder {
 
         try {
             if ($type -eq "7zip") {
-                & $archiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" "-aoa"
+                [Array]$cmdArgs
+
+                if ($archiverOptionsExpand) {
+                    foreach ($option in $archiverOptionsExpand) {
+                        if ($option) {
+                            $cmdArgs += $option
+                        }
+                    }
+                }
+
+                & $archiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" @cmdArgs
 
                 if ($LASTEXITCODE -gt 0) {
                     throw ("7-zip returned: " + $LASTEXITCODE)
@@ -2176,7 +2237,9 @@ function DecompressPlexAppData {
         [string]
         $subDirFolders,
         [string]
-        $archiverPath
+        $archiverPath,
+        [string[]]
+        $archiverOptionsExpand
     )
 
     # Build path to the ZIP file that holds files from the root Plex app data folder.
@@ -2195,7 +2258,17 @@ function DecompressPlexAppData {
 
         try {
             if ($type -eq "7zip") {
-                & $archiverPath "x" "$zipFilePath" "-o$plexAppDataDir" "-aoa"
+                [Array]$cmdArgs
+
+                if ($archiverOptionsExpand) {
+                    foreach ($option in $archiverOptionsExpand) {
+                        if ($option) {
+                            $cmdArgs += $option
+                        }
+                    }
+                }
+
+                & $archiverPath "x" "$zipFilePath" "-o$plexAppDataDir" @cmdArgs
 
                 if ($LASTEXITCODE -gt 0) {
                     throw ("7-zip returned: " + $LASTEXITCODE)
@@ -2231,7 +2304,8 @@ function DecompressPlexAppData {
                 $plexAppDataDir `
                 $tempZipFileDir `
                 $zipFileExt `
-                $archiverPath)) {
+                $archiverPath `
+                $archiverOptionsExpand)) {
             return $false
         }
     }
@@ -2259,7 +2333,9 @@ function CompressPlexAppDataFolder {
         [string]
         $zipFileExt,
         [string]
-        $archiverPath
+        $archiverPath,
+        [string[]]
+        $archiverOptionsCompress
     )
 
     $backupZipFileName = $sourceDir.Name + $zipFileExt
@@ -2292,6 +2368,14 @@ function CompressPlexAppDataFolder {
 
                 foreach ($excludeFile in $excludeFiles) {
                     $cmdArgs += "-x!$excludeFile"
+                }
+
+                if ($archiverOptionsCompress) {
+                    foreach ($option in $archiverOptionsCompress) {
+                        if ($option) {
+                            $cmdArgs += $option
+                        }
+                    }
                 }
 
                 & $archiverPath @cmdArgs
@@ -2430,7 +2514,9 @@ function CompressPlexAppData {
         [string]
         $subDirFolders,
         [string]
-        $archiverPath
+        $archiverPath,
+        [string[]]
+        $archiverOptionsCompress
     )
 
     # Build path to the ZIP file that will hold files from Plex app data folder.
@@ -2462,6 +2548,14 @@ function CompressPlexAppData {
 
                     foreach ($excludeFile in $excludeFiles) {
                         $cmdArgs += "-x!$excludeFile"
+                    }
+
+                    if ($archiverOptionsCompress) {
+                        foreach ($option in $archiverOptionsCompress) {
+                            if ($option) {
+                                $cmdArgs += $option
+                            }
+                        }
                     }
 
                     & $archiverPath @cmdArgs (Get-ChildItem (Join-Path $plexAppDataDir "*") -File)
@@ -2507,7 +2601,8 @@ function CompressPlexAppData {
                 (Join-Path $backupDirPath $subDirFolders) `
                 $tempZipFileDir `
                 $zipFileExt `
-                $archiverPath)) {
+                $archiverPath `
+                $archiverOptionsCompress)) {
             return $false
         }
     }
@@ -2645,7 +2740,9 @@ function RestorePlexFromBackup {
         [int]
         $retryWaitSec,
         [string]
-        $archiverPath
+        $archiverPath,
+        [string[]]
+        $archiverOptionsExpand
     )
     # Make sure the backup root folder exists.
     WakeUpDir $backupRootDir
@@ -2702,7 +2799,8 @@ function RestorePlexFromBackup {
                 $zipFileExt `
                 $subDirFiles `
                 $subDirFolders `
-                $archiverPath)) {
+                $archiverPath `
+                $archiverOptionsExpand)) {
             return $false
         }
 
@@ -2806,7 +2904,9 @@ function CreatePlexBackup {
         [string]
         $pmsVersion,
         [string]
-        $pmsVersionPath
+        $pmsVersionPath,
+        [string[]]
+        $archiverOptionsCompress
     )
 
     WakeUpDir $backupRootDir
@@ -2983,7 +3083,8 @@ function CreatePlexBackup {
                 $zipFileExt `
                 $subDirFiles `
                 $subDirFolders `
-                $archiverPath)) {
+                $archiverPath `
+                $archiverOptionsCompress)) {
             if (!(RestoreSpecialSubDirs `
                     $specialPlexAppDataSubDirs `
                     $plexAppDataDir `
@@ -3039,6 +3140,7 @@ function CreatePlexBackup {
 
 # We will trap errors in the try-catch blocks.
 $ErrorActionPreference = 'Stop'
+[System.Threading.Mutex]$mutex = $null
 
 # Clear screen.
 if ($ClearScreen) {
@@ -3047,6 +3149,21 @@ if ($ClearScreen) {
 
 # Make sure we have no pending errors.
 $Error.Clear()
+
+# Make sure script is not already running
+try {
+    $mutex = StartSingleInstance $MutexName
+}
+catch {
+    LogError "Cannot check if the script is already running."
+    LogException $_
+    exit $EXITCODE_ERROR
+}
+
+if (!$mutex) {
+    LogWarning "Plex backup script is already running."
+    exit $EXITCODE_ERROR_DUPLICATEINSTANCE
+}
 
 # Add custom folder(s) to the module path.
 if ($ModulePath) {
@@ -3075,6 +3192,7 @@ foreach ($module in $modules) {
     }
     catch {
         LogWarning "Cannot load module $module." $false
+        $mutex = StopSingleInstance $mutex
         exit $EXITCODE_ERROR_MODULE
     }
 }
@@ -3096,6 +3214,7 @@ try {
 }
 catch {
     LogWarning "Cannot initialize run-time configuration settings." $false
+    $mutex = StopSingleInstance $mutex
     exit $EXITCODE_ERROR_CONFIG
 }
 
@@ -3105,6 +3224,7 @@ InitType
 if ($Type -eq "7zip") {
     if (!$ArchiverPath) {
         LogError "Please set the value of parameter 'ArchiverPath' to point to the 7-zip command-line tool (7z.exe)." $false
+        $mutex = StopSingleInstance $mutex
         exit $EXITCODE_ERROR_ARCHIVERPATH
     }
 
@@ -3113,6 +3233,7 @@ if ($Type -eq "7zip") {
         LogError (Indent $ArchiverPath) $false
         LogError "Please define a valid path in parameter:" $false
         LogError (Indent "ArchiverPath") $false
+        $mutex = StopSingleInstance $mutex
         exit $EXITCODE_ERROR_ARCHIVERPATH
     }
 }
@@ -3136,11 +3257,13 @@ $BackupDirName, $BackupDirPath =
 
 if ((!$BackupDirName) -or (!$BackupDirPath)) {
     LogError "Cannot determine location of the backup folder." $false
+    $mutex = StopSingleInstance $mutex
     exit $EXITCODE_ERROR_BACKUPDIR
 }
 
 # Initialize log file settings.
 if (!(InitLog)) {
+    $mutex = StopSingleInstance $mutex
     exit $EXITCODE_ERROR_LOG
 }
 
@@ -3161,7 +3284,7 @@ if (MustSendMail $SendMail $Mode) {
     }
 }
 
-# If the From address is not speciifed, get it from credential object.
+# If the From address is not specified, get it from credential object.
 if (!$From) {
     if ($credential) {
         $From = $credential.UserName
@@ -3316,6 +3439,7 @@ if ($success) {
                         }
                     }
 
+                    $mutex = StopSingleInstance $mutex
                     exit $EXITCODE_ERROR_VERSIONMISMATCH
                 }
             }
@@ -3350,6 +3474,7 @@ if (!$success) {
         }
     }
 
+    $mutex = StopSingleInstance $mutex
     exit $EXITCODE_ERROR_GETPMSEXE
 }
 
@@ -3385,6 +3510,7 @@ catch {
         }
     }
 
+    $mutex = StopSingleInstance $mutex
     exit $EXITCODE_ERROR_GETSERVICES
 }
 
@@ -3418,6 +3544,7 @@ if (!$success) {
         }
     }
 
+    $mutex = StopSingleInstance $mutex
     exit $EXITCODE_ERROR_STOPSERVICES
 }
 
@@ -3451,6 +3578,7 @@ if ($PlexServerExePath) {
             }
         }
 
+        $mutex = StopSingleInstance $mutex
         exit $EXITCODE_ERROR_STOPPMSEXE
     }
 }
@@ -3517,7 +3645,7 @@ else {
 # Log off all currently logged on users except the current user.
 if ($Logoff) {
     try {
-        quser | Select-String "Disc" | ForEach {logoff ($_.ToString() -split ' +')[2]}
+        quser | Select-String "Disc" | ForEach-Object {logoff ($_.ToString() -split ' +')[2]}
     }
     catch {
         LogException $_
@@ -3616,11 +3744,17 @@ if ($success) {
             }
         }
     }
+    $mutex = StopSingleInstance $mutex
     exit $EXITCODE_SUCCESS
 }
-else {
+
+$mutex = StopSingleInstance $mutex
+exit $EXITCODE_ERROR
+
+# Unhandled exception handler.
+trap {
+    $mutex = StopSingleInstance $mutex
     exit $EXITCODE_ERROR
 }
-
 # THE END
 #--------------------------------------------------------------------------

@@ -190,5 +190,14 @@
     },
     "ForceReboot": {
         "value": null
+    },
+    "ArchiverOptionsCompress": {
+        "value": null
+    },
+    "ArchiverOptionsExpand": {
+        "_meta": {
+            "default": ["-aoa"]
+        },
+        "value": null
     }
 }
