@@ -196,9 +196,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (the 'Reboot' switch is ignored).
 
 .NOTES
-Version    : 1.6.9
+Version    : 1.7.0
 Author     : Alek Davis
-Created on : 2020-05-23
+Created on : 2020-06-08
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
