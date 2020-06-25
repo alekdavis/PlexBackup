@@ -196,9 +196,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (the 'Reboot' switch is ignored).
 
 .NOTES
-Version    : 1.7.1
+Version    : 1.7.2
 Author     : Alek Davis
-Created on : 2020-06-24
+Created on : 2020-06-25
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -499,7 +499,7 @@ $ArchiverOptionsCompress =
 # 7-zip command-line option for decompression.
 $ArchiverOptionsExpand =
 @(
-    "aoa"
+    $null
 )
 
 # DO NOT CHANGE THE FOLLOWING SETTINGS:
@@ -2148,7 +2148,7 @@ function DecompressPlexAppDataFolder {
                     }
                 }
 
-                & $archiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" @cmdArgs
+                & $archiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" "-aoa" @cmdArgs
 
                 if ($LASTEXITCODE -gt 0) {
                     throw ("7-zip returned: " + $LASTEXITCODE)
