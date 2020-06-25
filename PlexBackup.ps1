@@ -196,9 +196,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (the 'Reboot' switch is ignored).
 
 .NOTES
-Version    : 1.7.0
+Version    : 1.7.1
 Author     : Alek Davis
-Created on : 2020-06-08
+Created on : 2020-06-24
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -499,7 +499,7 @@ $ArchiverOptionsCompress =
 # 7-zip command-line option for decompression.
 $ArchiverOptionsExpand =
 @(
-    "-aoa"
+    "aoa"
 )
 
 # DO NOT CHANGE THE FOLLOWING SETTINGS:
@@ -3604,7 +3604,8 @@ if ($Mode -eq "Restore") {
         $Type `
         $Retries `
         $RetryWaitSec `
-        $ArchiverPath
+        $ArchiverPath `
+        $ArchiverOptionsExpand
 }
 # Back up Plex app data.
 else {
@@ -3639,7 +3640,8 @@ else {
         $RetryWaitSec `
         $ArchiverPath `
         $pmsVersion `
-        $pmsVersionPath
+        $pmsVersionPath `
+        $ArchiverOptionsCompress
 }
 
 # Log off all currently logged on users except the current user.

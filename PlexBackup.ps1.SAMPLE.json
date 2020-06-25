@@ -196,7 +196,7 @@
     },
     "ArchiverOptionsExpand": {
         "_meta": {
-            "default": ["-aoa"]
+            "default": ["aoa"]
         },
         "value": null
     }
