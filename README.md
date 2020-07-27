@@ -117,7 +117,6 @@ A config file must use [JSON formatting](https://www.json.org/), such as:
     "Anonymous": { "value": null },
     "SendLogFile": { "value": true },
     "ArchiverPath": { "value": null },
-    "ModulePath": { "value": null },
     "WakeUpDir": { "value": null },
     "Logoff": { "value": null },
     "Reboot": { "value": null },
@@ -232,8 +231,10 @@ By defaul, PlexBackup will use the username provided via the SMTP credentials as
     [-NoLogo] `
     [-Cls] `
     [-ModulePath <String>] `
-    [-WakeUpDir = <String>] `
+    [-WakeUpDir <String>] `
     [-Logoff] `
+    [-Reboot] `
+    [-ForceReboot] `
     [<CommonParameters>]
 ```
 ### Arguments
@@ -372,7 +373,6 @@ Supresses the version and copyright message normally displayed in the beginning 
 
 Clears the console screen in the beginning of the script run.
 
-
 `-ModulePath`
 
 Optional path to directory holding the modules used by this script. This can be useful if the script runs on the system with no or restricted access to the Internet. By default, the module path will point to the 'Modules' folder in the script's folder.
@@ -382,7 +382,16 @@ Optional path to directory holding the modules used by this script. This can be 
 Optional path to a remote share that may need to be woken up before starting Plex Media Service.
 
 `-Logoff`
+
 Specify this command-line switch to log off all user accounts (except the running one) before starting Plex Media Server. This may help address issues with remote drive mappings under the wrong credentials.
+
+`-Reboot`
+
+Reboots the computer after a successful backup operation (ignored on restore).
+
+`-ForceReboot`
+
+Forces an immediate restart of the computer after a successfull backup operation (the 'Reboot' switch is ignored).
 
 `<CommonParameters>`
 
@@ -404,6 +413,7 @@ To check whether the backup script executed successfully or encountered an error
 - `9` : path to 7-zip command-line tool is undefined or does not exist
 - `10`: version mismatch between backup and current Plex Media Server instance
 - `11`: cannot install or import a module (see [Dependencies](#Dependencies))
+- `12`: backup script is already running
 
 ## Examples
 

@@ -196,9 +196,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (the 'Reboot' switch is ignored).
 
 .NOTES
-Version    : 1.7.2
+Version    : 1.7.3
 Author     : Alek Davis
-Created on : 2020-06-25
+Created on : 2020-07-26
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -3191,7 +3191,8 @@ foreach ($module in $modules) {
         LoadModule -ModuleName $module
     }
     catch {
-        LogWarning "Cannot load module $module." $false
+        LogException $_ $false $false
+        LogError "Cannot load module '$module'." $false
         $mutex = StopSingleInstance $mutex
         exit $EXITCODE_ERROR_MODULE
     }
@@ -3213,7 +3214,8 @@ try {
     Import-ConfigFile -ConfigFilePath $ConfigFile -DefaultParameters $PSBoundParameters
 }
 catch {
-    LogWarning "Cannot initialize run-time configuration settings." $false
+    LogException $_ $false $false
+    LogError "Cannot initialize run-time configuration settings." $false
     $mutex = StopSingleInstance $mutex
     exit $EXITCODE_ERROR_CONFIG
 }
