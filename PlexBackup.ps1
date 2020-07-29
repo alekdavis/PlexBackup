@@ -196,9 +196,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (the 'Reboot' switch is ignored).
 
 .NOTES
-Version    : 1.7.3
+Version    : 1.7.4
 Author     : Alek Davis
-Created on : 2020-07-26
+Created on : 2020-07-29
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -621,7 +621,7 @@ function SavePmsVersion {
     }
 
     try {
-        if (!(Test-Path -Path $$path -PathType Leaf)) {
+        if (!(Test-Path -Path $path -PathType Leaf)) {
             New-Item -Path $path -Type file -Force | Out-Null
         }
 
