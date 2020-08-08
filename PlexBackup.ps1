@@ -54,6 +54,10 @@ If the execution policy does not allow running scripts, do the following:
 
 This will allow running unsigned scripts that you write on your local computer and signed scripts from Internet.
 
+Alternatively, you may want to run the script as:
+
+  start powershell.exe -noprofile -executionpolicy bypass -file .\PlexBackup.ps1 -ConfigFile .\PlexBackup.ps1.json
+
 See also 'Running Scripts' at Microsoft TechNet Library:
 
 https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)

@@ -54,7 +54,15 @@ If the execution policy does not allow running scripts, do the following:
 Set-ExecutionPolicy RemoteSigned
 ```
 
-This will allow running unsigned scripts that you write on your local computer and signed scripts downloaded from the Internet (okay, this is not a signed script, but if you copy it locally, make a non-destructive change--e.g. add a space character, remove the space character, and save the file--it should work). For additional information, see [Running Scripts](https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)) at Microsoft TechNet Library.
+This will allow running unsigned scripts that you write on your local computer and signed scripts downloaded from the Internet (okay, this is not a signed script, but if you copy it locally, make a non-destructive change--e.g. add a space character, remove the space character, and save the file--it should work).
+
+Alternatively, you may want to run the script as:
+
+```PowerShell
+start powershell.exe -noprofile -executionpolicy bypass -file .\PlexBackup.ps1 -ConfigFile .\PlexBackup.ps1.json
+```
+
+For additional information, see [Running Scripts](https://docs.microsoft.com/en-us/previous-versions//bb613481(v=vs.85)) at Microsoft TechNet Library.
 
 ### Dependencies
 
