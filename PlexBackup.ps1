@@ -237,9 +237,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
 .NOTES
-Version    : 2.0.0
+Version    : 2.0.1
 Author     : Alek Davis
-Created on : 2020-08-08
+Created on : 2020-08-13
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -561,7 +561,7 @@ $ArchiverOptionsExpand =
 # Module implementing logging to file and console routines:
 # https://www.powershellgallery.com/packages/StreamLogging
 
-$MODULES = @("ScriptVersion", "ConfigFile", "StreamLogging")
+$MODULES = @("ScriptVersion", "ConfigFile", "StreamLogging", "SingleInstance")
 
 #------------------------------[ CONSTANTS ]-------------------------------
 
@@ -943,12 +943,10 @@ function StartLogging {
 function StopLogging {
     [CmdletBinding()]
     param(
-        [bool]
-        $startedLogging
     )
     WriteDebug "Entered StopLogging."
 
-    if ($startedLogging) {
+    if (Test-LoggingStarted) {
         try {
             Write-Verbose "Uninitializing logging."
             Stop-Logging
@@ -965,51 +963,6 @@ function StopLogging {
     }
 
     WriteDebug "Exiting StopLogging."
-}
-
-#--------------------------------------------------------------------------
-# StartSingleInstance
-#   Checks if the script is already running.
-function StartSingleInstance {
-    param (
-        [string]
-        $mutexName
-    )
-    WriteDebug "Entered StartSingleInstance."
-
-    $success = $false
-
-    Write-Verbose "Creating single-instance mutex '$mutexName'."
-    [System.Threading.Mutex]$mutex = New-Object `
-        System.Threading.Mutex($true, $mutexName, [ref] $success)
-
-    if ($success) {
-        return $mutex
-    }
-
-    WriteDebug "Exiting StartSingleInstance."
-    return $null
-}
-
-#--------------------------------------------------------------------------
-# StopSingleInstance
-#   Releases mutex that enforces single instance.
-function StopSingleInstance {
-    param (
-        [System.Threading.Mutex]
-        $mutex
-    )
-    WriteDebug "Entered StopSingleInstance."
-
-    if ($mutex) {
-        Write-Verbose "Releasing single-instance mutex."
-        $mutex.ReleaseMutex()
-        $mutex.Dispose()
-        $mutex = $null
-    }
-
-    WriteDebug "Exiting StopSingleInstance."
-    return $mutex
 }
 
 #--------------------------------------------------------------------------
@@ -1622,21 +1575,15 @@ function ValidateSingleInstance {
     WriteDebug "Entered ValidateSingleInstance."
 
     # Mutex for single-instance operation.
-    [System.Threading.Mutex]$singleInstance = $null
-
     if (!$Script:NoSingleton) {
         Write-Verbose "Making sure the script is not already running."
 
-        $singleInstance = StartSingleInstance $MUTEX_NAME
-
-        if (!$singleInstance) {
-            throw "The script is already running."
+        if (!(Enter-SingleInstance $MUTEX_NAME)) {
+             throw "The script is already running."
         }
     }
 
     WriteDebug "Exiting ValidateSingleInstance."
-
-    return $singleInstance
 }
 
 #--------------------------------------------------------------------------
@@ -3722,12 +3669,6 @@ $LASTEXITCODE = 0
 # Assume that SMTP server does not require authentication for now.
 [System.Management.Automation.PSCredential]$credential = $null
 
-# Mutex for single-instance operation.
-[System.Threading.Mutex]$singleInstance = $null
-
-# Log files are not initialized, yet.
-[bool]$startedLogging = $false
-
 try {
     try {
         # Add custom folder(s) to the module path.
@@ -3787,7 +3728,7 @@ try {
         ValidateVersion
 
         # Make sure script is not already running (unless we ignore single instance check).
-        $singleInstance = ValidateSingleInstance
+        ValidateSingleInstance
     }
     catch {
         throw (New-Object System.Exception("Validation error.", $_.Exception))
@@ -3796,9 +3737,6 @@ try {
     # Initialize logging.
     try {
         StartLogging
-
-        # Once we reached this point, before exiting, we must close open log files.
-        $startedLogging = $true
     }
     catch {
         throw (New-Object System.Exception( `
@@ -3826,7 +3764,7 @@ catch {
     }
 
     # Depending on whether logs were initialized, print error.
-    if ($startedLogging) {
+    if (Test-LoggingStarted) {
         # Print error to logs.
         Write-LogError $_
     }
@@ -3836,16 +3774,14 @@ catch {
     }
 
     # We may need to dispose logging resources (i.e. stream writers).
-    $startedLogging = StopLogging $startedLogging
+    StopLogging
 }
 finally {
     # Close mutex enforcing single-instance operation.
-    $singleInstance = StopSingleInstance $singleInstance
+    Exit-SingleInstance
 
     # We may need to dispose logging resources (i.e. stream writers).
-    if ($startedLogging) {
-        StopLogging $startedLogging
-    }
+    StopLogging
 
     try {
         # Send email notification if needed.

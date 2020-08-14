@@ -71,6 +71,7 @@ PlexBackup uses the following modules:
 - [ScriptVersion](https://www.powershellgallery.com/packages/ScriptVersion)
 - [ConfigFile](https://www.powershellgallery.com/packages/ConfigFile)
 - [StreamLogging](https://www.powershellgallery.com/packages/StreamLogging)
+- [StreamLogging](https://www.powershellgallery.com/packages/SingleInstance)
 
 To verify that the modules get installed, run the script manually. You may be [prompted](https://docs.microsoft.com/en-us/powershell/gallery/how-to/getting-support/bootstrapping-nuget) to update the [NuGet](https://www.nuget.org/downloads) version (or you can do it yourself in advance).
 
