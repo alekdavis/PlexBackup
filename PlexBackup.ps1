@@ -237,9 +237,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
 .NOTES
-Version    : 2.0.1
+Version    : 2.0.2
 Author     : Alek Davis
-Created on : 2020-08-13
+Created on : 2020-08-23
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -1387,7 +1387,7 @@ function InitMail {
         # Show prompt to allow user to enter credentials.
         if (!$Script:Credential) {
             try {
-                $Script:Credential = $Host.UI.SetCredential(
+                $Script:Credential = $Host.UI.PromptForCredential(
                     "SMTP Server Authentication",
                     "Please enter your credentials for " + $Script:SmtpServer,
                     "",
