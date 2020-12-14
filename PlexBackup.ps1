@@ -13,7 +13,6 @@ The script can run in these modes:
 
 The script backs up the contents of the 'Plex Media Server' folder (app data folder) with the exception of some top-level, non-essential folders. You can customize the list of folders that do not need to be backed up. By default, the following top-level app data folders are not backed up:
 
-- Cache
 - Diagnostics
 - Crash Reports
 - Updates
@@ -237,9 +236,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
 .NOTES
-Version    : 2.0.2
+Version    : 2.0.3
 Author     : Alek Davis
-Created on : 2020-08-23
+Created on : 2020-12-13
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2020 Alek Davis
@@ -505,7 +504,6 @@ param (
 
 # The following Plex application folders do not need to be backed up.
 $ExcludeDirs = @(
-    "Cache",
     "Diagnostics",
     "Crash Reports",
     "Updates",
@@ -514,8 +512,10 @@ $ExcludeDirs = @(
 
 # The following file types do not need to be backed up:
 # *.bif - thumbnail previews
+# Transcode - cache subfolder used for transcoding and syncs (could be huge)
 $ExcludeFiles = @(
-    "*.bif"
+    "*.bif",
+    "Transcode"
 )
 
 # Subfolders that cannot be archived because the path may be too long.
@@ -2657,10 +2657,10 @@ function CompressFolder {
         if ($Script:Type -eq $TYPE_7ZIP) {
             [Array]$cmdArgs = "a", "$tempZipFilePath", (Join-Path $sourceDir.FullName "*"), "-r", "-y"
 
-            if ($excludeFiles -and $excludeFiles.Count -gt 0) {
+            if ($Script:ExcludeFiles -and $Script:ExcludeFiles.Count -gt 0) {
                 Write-Verbose "Excluding file types: $excludeFiles"
 
-                foreach ($excludeFile in $excludeFiles) {
+                foreach ($excludeFile in $Script:ExcludeFiles) {
                     if ($excludeFile) {
                         $cmdArgs += "-x!$excludeFile"
                     }
