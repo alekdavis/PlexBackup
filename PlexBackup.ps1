@@ -236,12 +236,12 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
 .NOTES
-Version    : 2.0.3
+Version    : 2.0.4
 Author     : Alek Davis
-Created on : 2020-12-13
+Created on : 2021-03-30
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
-Copyright  : (c) 2020 Alek Davis
+Copyright  : (c) 2019-2021 Alek Davis
 
 .LINK
 https://github.com/alekdavis/PlexBackup
@@ -2732,7 +2732,7 @@ function CompressFolder {
                     WriteLogException $_
 
                     try {
-                        if ((!$Script:Test) -and (!(Test-Path $tempZipFilePath -PathType Leaf))) {
+                        if ((!$Script:Test) -and (Test-Path $tempZipFilePath -PathType Leaf)) {
                             Write-Verbose "Deleting '$tempZipFilePath'."
                             Remove-Item $tempZipFilePath -Force
                         }
@@ -2750,10 +2750,9 @@ function CompressFolder {
 
                 # Delete temp file.
                 if (Test-Path -Path $tempZipFilePath -PathType Leaf) {
-                    Write-Verbose "Deleting '$tempZipFilePath'."
-
                     try {
-                        if ((!$Script:Test) -and (!(Test-Path $tempZipFilePath -PathType Leaf))) {
+                        if ((!$Script:Test) -and (Test-Path $tempZipFilePath -PathType Leaf)) {
+                            Write-Verbose "Deleting '$tempZipFilePath'."
                             Remove-Item $tempZipFilePath -Force
                         }
                     }
