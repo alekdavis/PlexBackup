@@ -561,6 +561,9 @@ $ArchiverOptionsExpand =
 # Module implementing logging to file and console routines:
 # https://www.powershellgallery.com/packages/StreamLogging
 
+# Module responsible for making sure only one instance of the script is running:
+# https://www.powershellgallery.com/packages/SingleInstance
+
 $MODULES = @("ScriptVersion", "ConfigFile", "StreamLogging", "SingleInstance")
 
 #------------------------------[ CONSTANTS ]-------------------------------
