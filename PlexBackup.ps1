@@ -236,9 +236,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
 .NOTES
-Version    : 2.0.4
+Version    : 2.0.5
 Author     : Alek Davis
-Created on : 2021-03-30
+Created on : 2021-04-10
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019-2021 Alek Davis
@@ -1914,7 +1914,7 @@ function StartPlexServices {
     )
     WriteDebug "Entered StartPlexServices."
 
-    if ($services -and ($services.Count -le 0)) {
+    if ($services -and ($services.Count -gt 0)) {
         Write-LogInfo "Starting Plex services:"
 
         foreach ($service in $services) {
