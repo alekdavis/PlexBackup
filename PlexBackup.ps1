@@ -236,9 +236,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
 .NOTES
-Version    : 2.0.6
+Version    : 2.1.0
 Author     : Alek Davis
-Created on : 2021-07-10
+Created on : 2021-10-25
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) 2019-2021 Alek Davis
@@ -477,7 +477,7 @@ param (
     [switch]
     $NoSsl,
 
-   [Alias("Credential")]
+    [Alias("Credential")]
     [string]
     $CredentialFile = $null,
 
@@ -524,8 +524,7 @@ $ExcludeFiles = @(
 # the backup directory, and copy it back once the archival step completes.
 # On restore, we'll copy these folders from the backup directory to the
 # Plex app data folder.
-$SpecialDirs =
-@(
+$SpecialDirs = @(
     "Plug-in Support\Data\com.plexapp.system\DataItems\Deactivated"
 )
 
@@ -564,7 +563,17 @@ $ArchiverOptionsExpand =
 # Module responsible for making sure only one instance of the script is running:
 # https://www.powershellgallery.com/packages/SingleInstance
 
-$MODULES = @("ScriptVersion", "ConfigFile", "StreamLogging", "SingleInstance")
+$MODULE_ScriptVersion   = "ScriptVersion"
+$MODULE_ConfigFile      = "ConfigFile"
+$MODULE_StreamLogging   = "StreamLogging"
+$MODULE_SingleInstance  = "SingleInstance"
+
+$MODULES = @(
+    $MODULE_ScriptVersion,
+    $MODULE_ConfigFile,
+    $MODULE_StreamLogging,
+    $MODULE_SingleInstance
+)
 
 #------------------------------[ CONSTANTS ]-------------------------------
 
@@ -620,12 +629,6 @@ $SEND_MAIL_ERROR   = "OnError"
 $SEND_MAIL_SUCCESS = "OnSuccess"
 $SEND_MAIL_BACKUP  = "OnBackup"
 $SEND_MAIL_RESTORE = "OnRestore"
-<#
-$SEND_MAIL_BACKUP_ERROR    = "OnBackupError"
-$SEND_MAIL_BACKUP_SUCCESS  = "OnBackupSuccess"
-$SEND_MAIL_RESTORE_ERROR   = "OnRestoreError"
-$SEND_MAIL_RESTORE_SUCCESS = "OnRestoreSuccess"
-#>
 
 $SEND_LOGFILE_NEVER   = "Never"
 $SEND_LOGFILE_ALWAYS  = "Always"
@@ -706,50 +709,53 @@ function SetModulePath {
 }
 
 #--------------------------------------------------------------------------
-# LoadModule
-#   Installs (if needed) and loads a PowerShell module.
+# LoadModules
+#   Installs (if needed) and loads the specified PowerShell modules.
 function LoadModules {
     [CmdletBinding()]
     param(
+        [string[]]
+        $moduleNames
     )
     WriteDebug "Entered LoadModules."
 
     # Make sure we got the modules.
-    if (!($MODULES) -or ($MODULES.Count -eq 0)) {
+    if (!($moduleNames) -or ($moduleNames.Count -eq 0)) {
         return
     }
 
-    [string]$moduleName = $null
+    [string]$module = $null
 
     try {
-        foreach ($module in $MODULES) {
-            $moduleName = $module
+        foreach ($moduleName in $moduleNames) {
+            $module = $moduleName
 
             # If module is not loaded into the process.
-            if (!(Get-Module -Name $module)) {
+            if (!(Get-Module -Name $moduleName)) {
 
                 # Check if module is locally available.
-                if (!(Get-Module -Listavailable -Name $module)) {
+                if (!(Get-Module -Listavailable -Name $moduleName)) {
 
                     # Download module if needed.
-                    Write-Verbose "Installing module '$module'."
-                    Install-Module -Name $module `
+                    Write-Verbose "Installing module '$moduleName'."
+                    Install-Module -Name $moduleName `
                         -Force -Scope CurrentUser -ErrorAction Stop
                 }
             }
 
             #  Import module into the process.
-            Write-Verbose "Importing module '$module'."
-            Import-Module $module -ErrorAction Stop -Force
+            Write-Verbose "Importing module '$moduleName'."
+            Import-Module $moduleName -ErrorAction Stop -Force
         }
     }
     catch {
         throw (New-Object System.Exception( `
-            "Cannot load module '$moduleName'.", $_.Exception))
+            "Cannot load module '$module'.", $_.Exception))
     }
-
-    WriteDebug "Exiting LoadModules."
- }
+    finally {
+        WriteDebug "Exiting LoadModules."
+    }
+}
 
 #--------------------------------------------------------------------------
 # GetScriptVersion
@@ -768,6 +774,25 @@ function GetScriptVersion {
     return ($scriptName +
         " v" + $versionInfo["Version"] +
         " " + $versionInfo["Copyright"])
+}
+
+#--------------------------------------------------------------------------
+# GetPowerShellVersion
+#   Returns PowerShell version info.
+function GetPowerShellVersion {
+    [CmdletBinding()]
+    param (
+    )
+    WriteDebug "Entered GetPowerShellVersion."
+
+    $psVersion = $PSVersionTable.PSVersion
+
+    WriteDebug "Exiting GetScriptVersion."
+
+    return ($psVersion.Major.ToString() + '.' +
+            $psVersion.Minor.ToString() + '.' +
+            $psVersion.Build.ToString() + '.' +
+            $psVersion.Revision.ToString())
 }
 
 #--------------------------------------------------------------------------
@@ -938,7 +963,7 @@ function StartLogging {
     Start-Logging @logArgs
 
     WriteDebug "Exiting StartLogging."
- }
+}
 
 #--------------------------------------------------------------------------
 # StopLogging
@@ -949,27 +974,32 @@ function StopLogging {
     )
     WriteDebug "Entered StopLogging."
 
-    if (Test-LoggingStarted) {
-        try {
-            Write-Verbose "Uninitializing logging."
-            Stop-Logging
-        }
-        catch {
-            WriteError "Cannot stop logging."
-            WriteException $_
+    if (Get-Module -Name $MODULE_StreamLogging) {
+        if (Test-LoggingStarted) {
+            try {
+                Write-Verbose "Uninitializing logging."
+                Stop-Logging
+            }
+            catch {
+                WriteError "Cannot stop logging."
+                WriteException $_
 
-            $Error.Clear()
+                $Error.Clear()
+            }
+        }
+        else {
+            Write-Verbose "Logging has not started, so nothing to uninitialize."
         }
     }
     else {
-        Write-Verbose "Logging has not started, so nothing to uninitialize."
+        Write-Verbose "$MODULE_StreamLogging module is not loaded."
     }
 
     WriteDebug "Exiting StopLogging."
 }
 
 #--------------------------------------------------------------------------
-# PreMain
+# Prologue
 #   Performs common action before the main execution logic.
 function Prologue {
     [CmdletBinding()]
@@ -1003,7 +1033,7 @@ function Prologue {
 }
 
 #--------------------------------------------------------------------------
-# PostMain
+# Epilogue
 #   Performs common action after the main execution logic.
 function Epilogue {
     [CmdletBinding()]
@@ -1140,7 +1170,7 @@ function InitGlobals {
 
 #--------------------------------------------------------------------------
 # FormatRegFilename
-#   Converts registry key path to filename
+#   Converts registry key path to filename (basically, hashes the name).
 function FormatRegFilename {
     [CmdletBinding()]
     param (
@@ -1161,6 +1191,10 @@ function FormatRegFilename {
 
     return $stringBuilder.ToString()
 }
+
+#--------------------------------------------------------------------------
+# FormatFileSize
+#   Generates a string representation of the file size.
 
 Function FormatFileSize() {
     param
@@ -1310,7 +1344,8 @@ function GetBackupDirAndPath {
             # as if running in the Backup mode).
             if (!$path -and ($Script:Mode -eq $MODE_RESTORE)) {
                 throw "No folder matching the timestamp regex format " +
-                    "'$REGEX_BACKUPDIRNAMEFORMAT' found in the backup root folder '$Script:BackupRootDir'."
+                    "'$REGEX_BACKUPDIRNAMEFORMAT' found in the " +
+                    "backup root folder '$Script:BackupRootDir'."
             }
         }
 
@@ -1348,108 +1383,113 @@ function InitMail {
         return
     }
 
-    if (!(MustSendMail)) {
-        if ($Script:SendMail -ne $SEND_MAIL_NEVER) {
-            Write-Verbose "Will not send email notification because the condition is not met."
-            $Script:SendMail = $SEND_MAIL_NEVER
-        }
-        else {
-            Write-Verbose "Email notification will not be sent."
-        }
+    try {
+        if (!(MustSendMail)) {
+            if ($Script:SendMail -ne $SEND_MAIL_NEVER) {
+                Write-Verbose "Will not send email notification because the condition is not met."
+                $Script:SendMail = $SEND_MAIL_NEVER
+            }
+            else {
+                Write-Verbose "Email notification will not be sent."
+            }
 
-        WriteDebug "Exiting InitSmtp."
-        return
-    }
-
-    # If we do not support anonymous SMTP, need to get credentials.
-    if (!$Script:Anonymous) {
-        # If credential file path is not specified, use the default.
-        if (!$Script:CredentialFile) {
-            $Script:CredentialFile = $PSCommandPath + $FILE_EXT_CRED
+            return
         }
 
-        # If credential file exists, read credentials from the file.
-        if (Test-Path -Path $Script:CredentialFile -PathType Leaf) {
-            try {
-                Write-Verbose "Importing SMTP credentials from '$Script:CredentialFile'."
-                $Script:Credential = Import-CliXml -Path $Script:CredentialFile
-            }
-            catch {
-                Write-Verbose ("Cannot import SMTP credentials from '$Script:CredentialFile'. " +
-                    "If the file is no longer valid, please delete it and try again.")
+        # If we do not support anonymous SMTP, need to get credentials.
+        if (!$Script:Anonymous) {
+            # If credential file path is not specified, use the default.
+            if (!$Script:CredentialFile) {
+                $Script:CredentialFile = $PSCommandPath + $FILE_EXT_CRED
             }
 
-            # If we did not get credentail from the file and  user prompt not specified,
-            # nothing we can do.
-            if (!$Script:Credential) {
-                Write-Verbose ("SMTP credentials in '$Script:CredentialFile' are empty. " +
-                    "If the file is no longer valid, please delete it and try again.")
-            }
-        }
-
-        # Show prompt to allow user to enter credentials.
-        if (!$Script:Credential) {
-            try {
-                $Script:Credential = $Host.UI.PromptForCredential(
-                    "SMTP Server Authentication",
-                    "Please enter your credentials for " + $Script:SmtpServer,
-                    "",
-                    "",
-                    [System.Management.Automation.PSCredentialTypes]::Generic,
-                    [System.Management.Automation.PSCredentialUIOptions]::None)
-            }
-            catch {
-                throw (New-Object System.Exception( `
-                    "Cannot get SMTP credentials from the Windows prompt.", $_.Exception))
-            }
-
-            # If we did not get credentail from the file and  user prompt not specified,
-            # nothing we can do.
-            if (!$Script:Credential) {
-                throw "No SMTP credentials provided."
-            }
-
-            # Save entered credentials if needed.
-            if ($Script:SaveCredential) {
+            # If credential file exists, read credentials from the file.
+            if (Test-Path -Path $Script:CredentialFile -PathType Leaf) {
                 try {
-                    Write-Verbose "Exporting SMTP credentials to '$Script:CredentialFile'."
-
-                    Export-CliXml -Path $Script:CredentialFile -InputObject $Script:Credential
+                    Write-Verbose "Importing SMTP credentials from '$Script:CredentialFile'."
+                    $Script:Credential = Import-CliXml -Path $Script:CredentialFile
                 }
                 catch {
-                    throw (New-Object System.Exception( `
-                        "Cannot export SMTP credentials to '$Script:CredentialFile'.", $_.Exception))
+                    Write-Verbose ("Cannot import SMTP credentials from '$Script:CredentialFile'. " +
+                        "If the file is no longer valid, please delete it and try again.")
+                }
+
+                # If we did not get credentail from the file and  user prompt not specified,
+                # nothing we can do.
+                if (!$Script:Credential) {
+                    Write-Verbose ("SMTP credentials in '$Script:CredentialFile' are empty. " +
+                        "If the file is no longer valid, please delete it and try again.")
+                }
+            }
+
+            # Show prompt to allow user to enter credentials.
+            if (!$Script:Credential) {
+                try {
+                    $Script:Credential = $Host.UI.PromptForCredential(
+                        "SMTP Server Authentication",
+                        "Please enter your credentials for " + $Script:SmtpServer,
+                        "",
+                        "",
+                        [System.Management.Automation.PSCredentialTypes]::Generic,
+                        [System.Management.Automation.PSCredentialUIOptions]::None)
+                }
+                catch {
+                   throw (New-Object System.Exception( `
+                        "Cannot get SMTP credentials from the Windows prompt.", $_.Exception))
+                }
+
+                # If we did not get credentail from the file and  user prompt not specified,
+                # nothing we can do.
+                if (!$Script:Credential) {
+                    throw "No SMTP credentials provided."
+                }
+
+                # Save entered credentials if needed.
+                if ($Script:SaveCredential) {
+                    try {
+                        Write-Verbose "Exporting SMTP credentials to '$Script:CredentialFile'."
+
+                        Export-CliXml -Path $Script:CredentialFile -InputObject $Script:Credential
+                    }
+                    catch {
+                        throw (New-Object System.Exception( `
+                            "Cannot export SMTP credentials to '$Script:CredentialFile'.", $_.Exception))
+                    }
                 }
             }
         }
-    }
 
-    if (!$Script:From -and !$Script:To -and (!$Script:Credential -or !$Script:Credential.UserName)) {
-        throw "No address specified for email notification."
-    }
-
-    # If the From address is not specified, get it from credential object or To address.
-    if (!$Script:From) {
-        if ($Script:Credential -and $Script:Credential.UserName) {
-            $Script:From = $Script:Credential.UserName
+        if (!$Script:From -and !$Script:To -and (!$Script:Credential -or !$Script:Credential.UserName)) {
+            throw "No address specified for email notification."
         }
-        else {
-            $Script:From = $Script:To
+
+        # If the From address is not specified, get it from credential object or To address.
+        if (!$Script:From) {
+            if ($Script:Credential -and $Script:Credential.UserName) {
+                $Script:From = $Script:Credential.UserName
+            }
+            else {
+                $Script:From = $Script:To
+            }
+        }
+
+        # If the To address is not specified, get it from the From address.
+        if (!$Script:To) {
+            $Script:To = $Script:From
+        }
+
+        # If the To or From address not specified, do not send mail.
+        if (!$Script:From -or !$Script:To) {
+            Write-Verbose "Will not send email notification because of missing address."
+            $Script:SendMail = $SEND_MAIL_NEVER
         }
     }
-
-    # If the To address is not specified, get it from the From address.
-    if (!$Script:To) {
-        $Script:To = $Script:From
+    catch {
+        throw
     }
-
-    # If the To or From address not specified, do not send mail.
-    if (!$Script:From -or !$Script:To) {
-        Write-Verbose "Will not send email notification because of missing address."
-        $Script:SendMail = $SEND_MAIL_NEVER
+    finally {
+        WriteDebug "Exiting InitMail."
     }
-
-    WriteDebug "Exiting InitMail."
 }
 
 #--------------------------------------------------------------------------
@@ -1461,19 +1501,27 @@ function Validate7Zip {
     )
     WriteDebug "Entered Validate7Zip."
 
-    if ($Script:Type -eq $TYPE_7ZIP) {
-        if (!$Script:ArchiverPath) {
-            throw "Please set the value of parameter 'ArchiverPath' " +
-                "to point to the 7-zip command-line tool (7z.exe)."
-        }
+    try {
+        if ($Script:Type -eq $TYPE_7ZIP) {
+            if (!$Script:ArchiverPath) {
+                throw "Please set the value of parameter 'ArchiverPath' " +
+                    "to point to the 7-zip command-line tool (7z.exe)."
+            }
 
-        if (!(Test-Path -Path $Script:ArchiverPath -PathType Leaf)) {
-        throw "The 7-zip command line tool is not found in '$Script:ArchiverPath'. " +
-                "Please define a valid path in parameter 'ArchiverPath'."
+            if (!(Test-Path -Path $Script:ArchiverPath -PathType Leaf)) {
+                throw "The 7-zip command line tool is not found in " +
+                    "'$Script:ArchiverPath'. " +
+                    "Please define a valid path in parameter 'ArchiverPath'."
+            }
         }
     }
+    catch {
+        throw
+    }
+    finally {
 
-    WriteDebug "Exiting Validate7Zip."
+        WriteDebug "Exiting Validate7Zip."
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -1528,44 +1576,50 @@ function ValidateData {
     )
     WriteDebug "Entered ValidateData."
 
-    # Make sure we have backup folder.
-    if (!$Script:BackupDir) {
-        throw "Path to backup data folder is not specified. " +
-            "Please, make sure you set one of the following switches: " +
-            "'-BackupRootDir', '-BackupDir'."
-    }
+    try {
+        # Make sure we have backup folder.
+        if (!$Script:BackupDir) {
+            throw "Path to backup data folder is not specified. " +
+                "Please, make sure you set one of the following switches: " +
+                "'-BackupRootDir', '-BackupDir'."
+        }
 
-    # For restore, we need the backup folder.
-    if ($Script:Mode -eq $MODE_RESTORE) {
-        if (!(Test-Path -Path $Script:BackupDir -PathType Container)) {
-            throw "Backup data folder '$Script:BackupDir' does not exist."
+        # For restore, we need the backup folder.
+        if ($Script:Mode -eq $MODE_RESTORE) {
+            if (!(Test-Path -Path $Script:BackupDir -PathType Container)) {
+                throw "Backup data folder '$Script:BackupDir' does not exist."
+            }
+        }
+
+        # We always need Plex app data folder.
+        if (!$Script:PlexAppDataDir) {
+            throw "Path to Plex app data folder is not specified. " +
+                "It must default to '$env:LOCALAPPDATA\Plex Media Server' " +
+                "but it is empty now. What have you done?"
+        }
+
+        # Plex app data folder must exist.
+        if ($Script:Mode -ne $MODE_RESTORE) {
+            if (!(Test-Path -Path $Script:PlexAppDataDir -PathType Container)) {
+                throw "Plex app data folder '$Script:PlexAppDataDir' does not exist."
+            }
+        }
+
+        # Check the important registry key.
+        if ($Script:Mode -ne $MODE_RESTORE) {
+            $key = $PLEX_REG_KEYS[0]
+
+            if (!(Test-Path -Path $key)) {
+                throw "Registry key '$key' does not exist."
+            }
         }
     }
-
-    # We always need Plex app data folder.
-    if (!$Script:PlexAppDataDir) {
-        throw "Path to Plex app data folder is not specified. " +
-            "It must default to '$env:LOCALAPPDATA\Plex Media Server' " +
-            "but it is empty now. What have you done?"
+    catch {
+        throw
     }
-
-    # Plex app data folder must exist.
-    if ($Script:Mode -ne $MODE_RESTORE) {
-        if (!(Test-Path -Path $Script:PlexAppDataDir -PathType Container)) {
-            throw "Plex app data folder '$Script:PlexAppDataDir' does not exist."
-        }
+    finally {
+        WriteDebug "Exiting ValidateData."
     }
-
-    # Check the important registry key.
-    if ($Script:Mode -ne $MODE_RESTORE) {
-        $key = $PLEX_REG_KEYS[0]
-
-        if (!(Test-Path -Path $key)) {
-            throw "Registry key '$key' does not exist."
-        }
-    }
-
-    WriteDebug "Exiting ValidateData."
 }
 
 #--------------------------------------------------------------------------
@@ -1577,16 +1631,22 @@ function ValidateSingleInstance {
     )
     WriteDebug "Entered ValidateSingleInstance."
 
-    # Mutex for single-instance operation.
-    if (!$Script:NoSingleton) {
-        Write-Verbose "Making sure the script is not already running."
+    try {
+        # Mutex for single-instance operation.
+        if (!$Script:NoSingleton) {
+            Write-Verbose "Making sure the script is not already running."
 
-        if (!(Enter-SingleInstance $MUTEX_NAME)) {
-             throw "The script is already running."
+            if (!(Enter-SingleInstance $MUTEX_NAME)) {
+                throw "The script is already running."
+            }
         }
     }
-
-    WriteDebug "Exiting ValidateSingleInstance."
+    catch {
+        throw
+    }
+    finally {
+        WriteDebug "Exiting ValidateSingleInstance."
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -1716,25 +1776,33 @@ function GetPlexServerPath {
     )
     WriteDebug "Entered GetPlexServerPath."
 
-    # Get path of the Plex Media Server executable.
-    if (!$Script:PlexServerPath) {
-        $Script:PlexServerPath = Get-Process |
-            Where-Object {$_.Path -match $Script:PlexServerFileName + "$" } |
-                Select-Object -ExpandProperty Path
+    try {
+        # Get path of the Plex Media Server executable.
+        if (!$Script:PlexServerPath) {
+            $Script:PlexServerPath = Get-Process |
+                Where-Object {$_.Path -match $Script:PlexServerFileName + "$" } |
+                    Select-Object -ExpandProperty Path
+        }
+
+        # Make sure we got the Plex Media Server executable file path.
+        if (!$Script:PlexServerPath) {
+            throw "Cannot determine path of the the Plex Media Server executable file " +
+                "'$Script:PlexServerFileName' because it is not running."
+        }
+
+        # Verify that the Plex Media Server executable file exists.
+        if (!(Test-Path -Path $Script:PlexServerPath -PathType Leaf)) {
+            throw "Plex Media Server executable file '$Script:PlexServerPath' does not exist."
+        }
+    }
+    catch {
+        throw
+    }
+    finally {
+        WriteDebug "Exiting GetPlexServerPath."
+
     }
 
-    # Make sure we got the Plex Media Server executable file path.
-    if (!$Script:PlexServerPath) {
-        throw "Cannot determine path of the the Plex Media Server executable file " +
-            "'$Script:PlexServerFileName' because it is not running."
-    }
-
-    # Verify that the Plex Media Server executable file exists.
-    if (!(Test-Path -Path $Script:PlexServerPath -PathType Leaf)) {
-        throw "Plex Media Server executable file '$Script:PlexServerPath' does not exist."
-    }
-
-    WriteDebug "Exiting GetPlexServerPath."
     return $Script:PlexServerPath
 }
 
@@ -1758,21 +1826,28 @@ function GetPlexVersion {
 
     Write-Verbose "Setting Plex Media Server path for version checking to '$path'."
 
-    if (($path) -and (Test-Path -Path $path -PathType Leaf)) {
-        try {
-            # Get version info from the assembly.
-            Write-Verbose "Reading Plex Media Server version from '$path'."
-            $version = (Get-Item $path).VersionInfo.FileVersion.Trim()
-            Write-Verbose "Plex Media Server version: '$version'."
-        }
-        catch {
-            throw (New-Object System.Exception( `
-                "Cannot get Plex Media Server version from '$path'.", `
-                     $_.Exception))
+    try {
+        if (($path) -and (Test-Path -Path $path -PathType Leaf)) {
+            try {
+                # Get version info from the assembly.
+                Write-Verbose "Reading Plex Media Server version from '$path'."
+                $version = (Get-Item $path).VersionInfo.FileVersion.Trim()
+                Write-Verbose "Plex Media Server version: '$version'."
+            }
+            catch {
+                throw (New-Object System.Exception( `
+                    "Cannot get Plex Media Server version from '$path'.", `
+                        $_.Exception))
+            }
         }
     }
+    catch {
+        throw
+    }
+    finally {
+        WriteDebug "Exiting GetPlexVersion."
+    }
 
-    WriteDebug "Exiting GetPlexVersion."
     return $version
 }
 
@@ -1786,21 +1861,28 @@ function GetBackupVersion {
 
     [string]$version = $null
 
-    if (($Script:VersionFilePath) -and (Test-Path -Path $Script:VersionFilePath -PathType Leaf)) {
-        try {
-            # Assume that this is a previous backup's version.txt file.
-            Write-Verbose "Reading backup version from '$Script:VersionFilePath'."
-            $version = (Get-Content -Path $Script:VersionFilePath).Trim()
-            Write-Verbose "Backup version: '$version'."
-        }
-        catch {
-            throw (New-Object System.Exception( `
-                "Cannot get backup version from '$Script:VersionFilePath'.", `
-                     $_.Exception))
+    try {
+        if (($Script:VersionFilePath) -and (Test-Path -Path $Script:VersionFilePath -PathType Leaf)) {
+            try {
+                # Assume that this is a previous backup's version.txt file.
+                Write-Verbose "Reading backup version from '$Script:VersionFilePath'."
+                $version = (Get-Content -Path $Script:VersionFilePath).Trim()
+                Write-Verbose "Backup version: '$version'."
+            }
+            catch {
+                throw (New-Object System.Exception( `
+                    "Cannot get backup version from '$Script:VersionFilePath'.", `
+                        $_.Exception))
+            }
         }
     }
+    catch {
+        throw
+    }
+    finally {
+        WriteDebug "Exiting GetBackupVersion."
+    }
 
-    WriteDebug "Exiting GetBackupVersion."
     return $version
 }
 
@@ -1945,53 +2027,59 @@ function StopPlexMediaServer {
     )
     WriteDebug "Entered StopPlexMediaServer."
 
-    # If we have the path to Plex Media Server executable, see if it's running.
-    if ($Script:PlexServerPath) {
-        $exeFileName = Get-Process |
-            Where-Object {$_.Path -eq $Script:PlexServerPath } |
-		        Select-Object -ExpandProperty Name
+    try {
+        # If we have the path to Plex Media Server executable, see if it's running.
+        if ($Script:PlexServerPath) {
+            $exeFileName = Get-Process |
+                Where-Object {$_.Path -eq $Script:PlexServerPath } |
+                    Select-Object -ExpandProperty Name
 
-        # Stop Plex Media Server executable (if it is running).
-        if ($exeFileName) {
-            Write-LogInfo "Stopping Plex Media Server process:"
-            Write-LogInfo $Script:PlexServerFileName -Indent 1
+            # Stop Plex Media Server executable (if it is running).
+            if ($exeFileName) {
+                Write-LogInfo "Stopping Plex Media Server process:"
+                Write-LogInfo $Script:PlexServerFileName -Indent 1
 
-            try {
-                # First, let's try to close Plex gracefully.
-                Write-Verbose "Trying to stop Plex Media Server process gracefully."
-                taskkill /im $Script:PlexServerFileName >$nul 2>&1
+                try {
+                    # First, let's try to close Plex gracefully.
+                    Write-Verbose "Trying to stop Plex Media Server process gracefully."
+                    taskkill /im $Script:PlexServerFileName >$nul 2>&1
 
-                $timeoutSeconds = 60
+                    $timeoutSeconds = 60
 
-                # Keep checking to see if Plex is not longer running for at most 60 seconds.
-                Write-Verbose "Checking if Plex Media Server process stopped gracefully."
-                do {
-                    # Sleep for a second.
-                    Start-Sleep -Seconds 1
-                    $timeoutSeconds--
+                    # Keep checking to see if Plex is not longer running for at most 60 seconds.
+                    Write-Verbose "Checking if Plex Media Server process stopped gracefully."
+                    do {
+                        # Sleep for a second.
+                        Start-Sleep -Seconds 1
+                        $timeoutSeconds--
 
-                } while (($timeoutSeconds -gt 0) -and
-                    (Get-Process -ErrorAction SilentlyContinue |
-                        Where-Object {$_.Path -match $Script:PlexServerFileName + "$" }))
+                    } while (($timeoutSeconds -gt 0) -and
+                        (Get-Process -ErrorAction SilentlyContinue |
+                            Where-Object {$_.Path -match $Script:PlexServerFileName + "$" }))
 
-                # If Plex is still running, kill it along with all child processes forcefully.
-                if (Get-Process -ErrorAction SilentlyContinue |
-                        Where-Object {$_.Path -match $Script:PlexServerFileName + "$" }) {
+                    # If Plex is still running, kill it along with all child processes forcefully.
+                    if (Get-Process -ErrorAction SilentlyContinue |
+                            Where-Object {$_.Path -match $Script:PlexServerFileName + "$" }) {
 
-                    Write-Verbose "Failed to stop Plex Media Server process gracefully."
-                    Write-Verbose "Killing Plex Media Server process."
+                        Write-Verbose "Failed to stop Plex Media Server process gracefully."
+                        Write-Verbose "Killing Plex Media Server process."
 
-                    taskkill /f /im $Script:PlexServerFileName /t >$nul 2>&1
+                        taskkill /f /im $Script:PlexServerFileName /t >$nul 2>&1
+                    }
                 }
-            }
-            catch {
-                throw (New-Object System.Exception( `
-                    "Error stopping Plex Media Server.", $_.Exception))
+                catch {
+                    throw (New-Object System.Exception( `
+                        "Error stopping Plex Media Server.", $_.Exception))
+                }
             }
         }
     }
-
-    WriteDebug "Exiting StopPlexMediaServer."
+    catch {
+        throw
+    }
+    finally {
+        WriteDebug "Exiting StopPlexMediaServer."
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -2041,6 +2129,7 @@ function StartPlexMediaServer {
 
     WriteDebug "Exiting StartPlexMediaServer."
 }
+
 #--------------------------------------------------------------------------
 # FormatEmail
 #   Formats HTML body for the notification email.
@@ -2210,7 +2299,6 @@ function FormatEmail {
     return $body
 }
 
-
 #--------------------------------------------------------------------------
 # SendMail
 #   Sends email notification with the information about the operation result.
@@ -2221,7 +2309,8 @@ function SendMail {
     WriteDebug "Entered SendMail."
 
     if (!$Script:From -or !$Script:To -or !$Script:SmtpServer) {
-        Write-Verbose "Undefined SMTP settings (SmtpServer, To, From); email notification will not be sent."
+        Write-Verbose "Undefined SMTP settings (SmtpServer, To, From)."
+        Write-Verbose "Email notification will not be sent."
     }
     else {
         $message = FormatEmail
@@ -2270,7 +2359,6 @@ function SendMail {
     WriteDebug "Exiting SendMail."
 }
 
-
 #--------------------------------------------------------------------------
 # RobocopyFiles
 #   Copies the Plex app data folder using the Windows 'robocopy' tool.
@@ -2309,85 +2397,91 @@ function RobocopyFiles {
     )
 
     try {
-        # Set directories to exclude from backup.
-        if (($excludeDirs) -and ($excludeDirs.Count -gt 0)) {
-            $excludePaths = [System.Collections.ArrayList]@()
+        try {
+            # Set directories to exclude from backup.
+            if (($excludeDirs) -and ($excludeDirs.Count -gt 0)) {
+                $excludePaths = [System.Collections.ArrayList]@()
 
-            Write-LogInfo "Excluding folders:"
+                Write-LogInfo "Excluding folders:"
 
-            # We need to use full paths.
-            foreach ($excludeDir in $excludeDirs) {
-                Write-LogInfo $excludeDir -Indent 1
-                ($excludePaths.Add((Join-Path $source $excludeDir))) | Out-Null
+                # We need to use full paths.
+                foreach ($excludeDir in $excludeDirs) {
+                    Write-LogInfo $excludeDir -Indent 1
+                    ($excludePaths.Add((Join-Path $source $excludeDir))) | Out-Null
+                }
+
+                $cmdArgs.Add("/XD") | Out-Null
+                $cmdArgs.Add($excludePaths) | Out-Null
             }
 
-            $cmdArgs.Add("/XD") | Out-Null
-            $cmdArgs.Add($excludePaths) | Out-Null
-        }
+            # Set file types to exclude (e.g. '*.bif').
+            if (($excludeFiles) -and ($excludeFiles.Count -gt 0)) {
+                Write-LogInfo "Excluding file types:"
 
-        # Set file types to exclude (e.g. '*.bif').
-        if (($excludeFiles) -and ($excludeFiles.Count -gt 0)) {
-            Write-LogInfo "Excluding file types:"
+                foreach ($excludeFile in $excludeFiles) {
+                    Write-LogInfo $excludeFile -Indent 1
+                }
 
-            foreach ($excludeFile in $excludeFiles) {
-                Write-LogInfo $excludeFile -Indent 1
+                $cmdArgs.Add("/XF") | Out-Null
+                $cmdArgs.Add($excludeFiles) | Out-Null
             }
 
-            $cmdArgs.Add("/XF") | Out-Null
-            $cmdArgs.Add($excludeFiles) | Out-Null
+            if (!$Script:RawOutput) {
+                $sleepSec = 3
+                Write-LogWarning "This operation may take a long time."
+                Start-Sleep -Seconds $sleepSec
+                Write-LogWarning "A really long time."
+                Start-Sleep -Seconds $sleepSec
+                Write-LogWarning "Like hours..."
+                Start-Sleep -Seconds $sleepSec
+                Write-LogWarning "Seriously!"
+                Start-Sleep -Seconds $sleepSec
+                Write-LogWarning "There will be no feedback unless something goes wrong."
+                Start-Sleep -Seconds $sleepSec
+                Write-LogWarning "If you get worried, use Task Manager to check CPU/disk usage."
+                Start-Sleep -Seconds $sleepSec
+                Write-LogWarning "Otherwise, take a break and come back later."
+            }
+
+            Write-LogInfo "Copying Plex app data files from:"
+            Write-LogInfo $source -Indent 1
+            Write-LogInfo "to:"
+            Write-LogInfo $target -Indent 1
+            Write-LogInfo "at:"
+            Write-LogInfo (GetTimestamp) -Indent 1
+
+            if (!$Script:Test) {
+                if ($Script:Quiet -or (!$Script:RawOutput)) {
+                    robocopy @cmdArgs *>&1 | Out-Null
+                }
+                else {
+                    robocopy @cmdArgs
+                }
+            }
+        }
+        catch {
+            throw (New-Object System.Exception( `
+                "Error copying '$source' to '$target'. Robocopy failed.", `
+                    $_.Exception))
         }
 
-        if (!$Script:RawOutput) {
-            $sleepSec = 3
-            Write-LogWarning "This operation may take a long time."
-            Start-Sleep -Seconds $sleepSec
-            Write-LogWarning "A really long time."
-            Start-Sleep -Seconds $sleepSec
-            Write-LogWarning "Like hours..."
-            Start-Sleep -Seconds $sleepSec
-            Write-LogWarning "Seriously!"
-            Start-Sleep -Seconds $sleepSec
-            Write-LogWarning "There will be no feedback unless something goes wrong."
-            Start-Sleep -Seconds $sleepSec
-            Write-LogWarning "If you get worried, use Task Manager to check CPU/disk usage."
-            Start-Sleep -Seconds $sleepSec
-            Write-LogWarning "Otherwise, take a break and come back later."
+        if ($LASTEXITCODE -gt 7) {
+            throw "Robocopy failed with error code $LASTEXITCODE. " +
+                "To troubleshoot, execute the following command: " +
+                "robocopy" +
+                (((ConvertTo-Json -InputObject $cmdArgs -Compress) -replace "[\[\],]", " ") `
+                    -replace "\s+"," ")
         }
 
-        Write-LogInfo "Copying Plex app data files from:"
-        Write-LogInfo $source -Indent 1
-        Write-LogInfo "to:"
-        Write-LogInfo $target -Indent 1
-        Write-LogInfo "at:"
+        Write-LogInfo "Completed at:"
         Write-LogInfo (GetTimestamp) -Indent 1
-
-        if (!$Script:Test) {
-            if ($Script:Quiet -or (!$Script:RawOutput)) {
-                robocopy @cmdArgs *>&1 | Out-Null
-            }
-            else {
-                robocopy @cmdArgs
-            }
-        }
     }
     catch {
-        throw (New-Object System.Exception( `
-            "Error copying '$source' to '$target'. Robocopy failed.", `
-                $_.Exception))
+        throw
     }
-
-    if ($LASTEXITCODE -gt 7) {
-        throw "Robocopy failed with error code $LASTEXITCODE. " +
-            "To troubleshoot, execute the following command: " +
-            "robocopy" +
-            (((ConvertTo-Json -InputObject $cmdArgs -Compress) -replace "[\[\],]", " ") `
-                -replace "\s+"," ")
+    finally {
+        WriteDebug "Exiting RobocopyFiles."
     }
-
-    Write-LogInfo "Completed at:"
-    Write-LogInfo (GetTimestamp) -Indent 1
-
-    WriteDebug "Exiting RobocopyFiles."
 }
 
 #--------------------------------------------------------------------------
@@ -2419,30 +2513,36 @@ function MoveFolder {
     Write-LogInfo (GetTimestamp) -Indent 1
 
     try {
-        if (!$Script:Test) {
-            if ($Script:Quiet -or (!$Script:RawOutput)) {
-                robocopy "$source" "$target" *.* /e /is /it *>&1 | Out-Null
-            }
-            else {
-                robocopy "$source" "$target" *.* /e /is /it
+        try {
+            if (!$Script:Test) {
+                if ($Script:Quiet -or (!$Script:RawOutput)) {
+                    robocopy "$source" "$target" *.* /e /is /it *>&1 | Out-Null
+                }
+                else {
+                    robocopy "$source" "$target" *.* /e /is /it
+                }
             }
         }
+        catch {
+            throw (New-Object System.Exception( `
+                "Robocopy failed.", $_.Exception))
+        }
+
+        if ($LASTEXITCODE -gt 7) {
+            throw "Robocopy failed with error code $LASTEXITCODE. " +
+                "To troubleshoot, execute the following command: " +
+                "robocopy '$source' '$target' *.* /e /is /it"
+        }
+
+        Write-LogInfo "Completed at:"
+        Write-LogInfo (GetTimestamp) -Indent 1
     }
     catch {
-        throw (New-Object System.Exception( `
-            "Robocopy failed.", $_.Exception))
+        throw
     }
-
-    if ($LASTEXITCODE -gt 7) {
-        throw "Robocopy failed with error code $LASTEXITCODE. " +
-            "To troubleshoot, execute the following command: " +
-            "robocopy '$source' '$target' *.* /e /is /it"
+    finally {
+        WriteDebug "Exiting MoveFolder."
     }
-
-    Write-LogInfo "Completed at:"
-    Write-LogInfo (GetTimestamp) -Indent 1
-
-    WriteDebug "Exiting MoveFolder."
 }
 
 #--------------------------------------------------------------------------
@@ -2458,47 +2558,52 @@ function CopyFolder {
     )
     WriteDebug "Entered CopyFolder."
 
-    if (!(Test-Path -Path $source -PathType Container)) {
-        Write-LogWarning "Folder not found:"
-        Write-LogWarning $source -Indent 1
-        Write-LogWarning "Skipping."
-
-        WriteDebug "Exiting CopyFolder."
-        return
-    }
-
-    Write-LogInfo "Copying:"
-    Write-LogInfo $source -Indent 1
-    Write-LogInfo "to:"
-    Write-LogInfo $target -Indent 1
-    Write-LogInfo "at:"
-    Write-LogInfo (GetTimestamp) -Indent 1
-
     try {
-        if (!$Script:Test) {
-            if ($Script:Quiet -or (!$Script:RawOutput)) {
-                robocopy "$source" "$target" *.* /e /is /it /move *>&1 | Out-Null
-            }
-            else {
-                robocopy "$source" "$target" *.* /e /is /it /move
+        if (!(Test-Path -Path $source -PathType Container)) {
+            Write-LogWarning "Folder not found:"
+            Write-LogWarning $source -Indent 1
+            Write-LogWarning "Skipping."
+
+            return
+        }
+
+        Write-LogInfo "Copying:"
+        Write-LogInfo $source -Indent 1
+        Write-LogInfo "to:"
+        Write-LogInfo $target -Indent 1
+        Write-LogInfo "at:"
+        Write-LogInfo (GetTimestamp) -Indent 1
+
+        try {
+            if (!$Script:Test) {
+                if ($Script:Quiet -or (!$Script:RawOutput)) {
+                    robocopy "$source" "$target" *.* /e /is /it /move *>&1 | Out-Null
+                }
+                else {
+                    robocopy "$source" "$target" *.* /e /is /it /move
+                }
             }
         }
+        catch {
+            throw (New-Object System.Exception( `
+                "Robocopy failed.", $_.Exception))
+        }
+
+        if ($LASTEXITCODE -gt 7) {
+            throw "Robocopy failed with error code $LASTEXITCODE. " +
+                "To troubleshoot, execute the following command: "
+                "robocopy '$source' '$target' *.* /e /is /it /move"
+        }
+
+        Write-LogInfo "Completed at:"
+        Write-LogInfo (GetTimestamp) -Indent 1
     }
     catch {
-        throw (New-Object System.Exception( `
-            "Robocopy failed.", $_.Exception))
+        throw
     }
-
-    if ($LASTEXITCODE -gt 7) {
-        throw "Robocopy failed with error code $LASTEXITCODE. " +
-            "To troubleshoot, execute the following command: "
-            "robocopy '$source' '$target' *.* /e /is /it /move"
+    finally {
+        WriteDebug "Exiting CopyFolder."
     }
-
-    Write-LogInfo "Completed at:"
-    Write-LogInfo (GetTimestamp) -Indent 1
-
-    WriteDebug "Exiting CopyFolder."
 }
 
 #--------------------------------------------------------------------------
@@ -2521,34 +2626,40 @@ function BackupSpecialFolders {
     )
     WriteDebug "Entered BackupSpecialFolders."
 
-    if (!($specialDirs) -or
-         ($specialDirs.Count -eq 0)) {
-        return $true
-    }
-
-    $i = 0
-    foreach ($specialDir in $specialDirs) {
-        $source = Join-Path $plexAppDataDir $specialDir
-
-        if (!(Test-Path -Path $source -PathType Container)) {
-            continue
+    try {
+        if (!($specialDirs) -or
+            ($specialDirs.Count -eq 0)) {
+            return $true
         }
 
-        $target = Join-Path $backupDirPath $specialDir
+        $i = 0
+        foreach ($specialDir in $specialDirs) {
+            $source = Join-Path $plexAppDataDir $specialDir
 
-        try {
-            if ($i++ -eq 0) {
-                Write-LogInfo "Backing up special folders."
+            if (!(Test-Path -Path $source -PathType Container)) {
+                continue
             }
-            MoveFolder $source $target
-        }
-        catch {
-            throw (New-Object System.Exception(
-                "Error moving '$source' to '$tartget'.", $_.Exception))
+
+            $target = Join-Path $backupDirPath $specialDir
+
+            try {
+                if ($i++ -eq 0) {
+                    Write-LogInfo "Backing up special folders."
+                }
+                MoveFolder $source $target
+            }
+            catch {
+                throw (New-Object System.Exception(
+                    "Error moving '$source' to '$tartget'.", $_.Exception))
+            }
         }
     }
-
-    WriteDebug "Exiting BackupSpecialFolders."
+    catch {
+        throw
+    }
+    finally {
+        WriteDebug "Exiting BackupSpecialFolders."
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -2568,34 +2679,40 @@ function RestoreSpecialFolders {
     )
     WriteDebug "Entered RestoreSpecialFolders."
 
-    if ($specialDirs -and
-        $specialDirs.Count -gt 0) {
+    try {
+        if ($specialDirs -and
+            $specialDirs.Count -gt 0) {
 
-        $i = 0
-        foreach ($specialDir in $specialDirs) {
-            $source = Join-Path $backupDirPath $specialDir
+            $i = 0
+            foreach ($specialDir in $specialDirs) {
+                $source = Join-Path $backupDirPath $specialDir
 
-            if (!(Test-Path -Path $source -PathType Container)) {
-                continue
-            }
-
-            $target = Join-Path $plexAppDataDir $specialDir
-
-            try {
-                if ($i++ -eq 0) {
-                    Write-LogInfo "Restoring special folders."
+                if (!(Test-Path -Path $source -PathType Container)) {
+                    continue
                 }
 
-                CopyFolder $source $target
-            }
-            catch {
-                throw (New-Object System.Exception(
-                    "Error copying '$source' to '$tartget'.", $_.Exception))
+                $target = Join-Path $plexAppDataDir $specialDir
+
+                try {
+                    if ($i++ -eq 0) {
+                        Write-LogInfo "Restoring special folders."
+                    }
+
+                    CopyFolder $source $target
+                }
+                catch {
+                    throw (New-Object System.Exception(
+                        "Error copying '$source' to '$tartget'.", $_.Exception))
+                }
             }
         }
     }
-
-    WriteDebug "Exiting RestoreSpecialFolders."
+    catch {
+        throw
+    }
+    finally {
+        WriteDebug "Exiting RestoreSpecialFolders."
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -2612,188 +2729,11 @@ function CompressFolder {
     )
     WriteDebug "Entered CompressFolder."
 
-    $zipFileName = $sourceDir.Name + $Script:ZipFileExt
-    $zipFilePath = Join-Path $backupDirPath $zipFileName
+    try {
+        $zipFileName = $sourceDir.Name + $Script:ZipFileExt
+        $zipFilePath = Join-Path $backupDirPath $zipFileName
 
-    # Skip if ZIP file already exists.
-    if (Test-Path $zipFilePath -PathType Leaf) {
-        Write-LogWarning "Backup file:"
-        Write-LogWarning $zipFilePath -Indent 1
-        Write-LogWarning "already exists."
-
-        if ($Script:Mode -eq $MODE_BACKUP) {
-            try {
-                Write-LogInfo "Deleting:"
-                Write-LogInfo $zipFilePath -Indent 1
-
-                if (!$Script:Test) {
-                    Remove-Item $zipFilePath -Force
-                }
-            }
-            catch {
-                throw (New-Object System.Exception( `
-                    "Cannot delete existing file '$zipFilePath'.",  `
-                    $_.Exception))
-            }
-        }
-    }
-
-    if (!(Test-Path $zipFilePath -PathType Leaf)) {
-        # If a staged temp folder is specified (instead of compressing over network)...
-        if ($Script:TempDir) {
-            $tempZipFileName = $BACKUP_FILENAME + (New-Guid).Guid + $Script:ZipFileExt
-            $tempZipFilePath = Join-Path $Script:TempDir $tempZipFileName
-        }
-        else {
-            # Use temp names for the final files.
-            $tempZipFileName = $zipFileName
-            $tempZipFilePath = $zipFilePath
-        }
-
-        Write-LogInfo "Archiving:"
-        Write-LogInfo $sourceDir.FullName -Indent 1
-        Write-LogInfo "to:"
-        Write-LogInfo $tempZipFilePath -Indent 1
-        Write-LogInfo "at:"
-        Write-LogInfo (GetTimestamp) -Indent 1
-
-        if ($Script:Type -eq $TYPE_7ZIP) {
-            [Array]$cmdArgs = "a", "$tempZipFilePath", (Join-Path $sourceDir.FullName "*"), "-r", "-y"
-
-            if ($Script:ExcludeFiles -and $Script:ExcludeFiles.Count -gt 0) {
-                Write-Verbose "Excluding file types: $excludeFiles"
-
-                foreach ($excludeFile in $Script:ExcludeFiles) {
-                    if ($excludeFile) {
-                        $cmdArgs += "-x!$excludeFile"
-                    }
-                }
-            }
-
-            if ($Script:ArchiverOptionsCompress -and $Script:ArchiverOptionsCompress.Count -gt 0) {
-                Write-Verbose "Setting 7-zip switches: $($Script:ArchiverOptionsCompress)"
-
-                foreach ($option in $Script:ArchiverOptionsCompress) {
-                    if ($option) {
-                        $cmdArgs += $option
-                    }
-                }
-            }
-
-            if (!$Script:Test) {
-                if ($Script:Quiet -or (!$Script:RawOutput)) {
-                    & $Script:ArchiverPath @cmdArgs *>&1 | Out-Null
-                }
-                else {
-                    & $Script:ArchiverPath @cmdArgs
-                }
-            }
-
-            if ($LASTEXITCODE -gt 0) {
-                throw ("7-zip returned '$LASTEXITCODE'.")
-            }
-        }
-        else {
-            if (!$Script:Test) {
-                Compress-Archive -Path (Join-Path $sourceDir.FullName "*") `
-                    -DestinationPath $tempZipFilePath -Force
-            }
-        }
-
-        Write-LogInfo "Completed at:"
-        Write-LogInfo (GetTimestamp) -Indent 1
-
-        Write-LogInfo "Compressed file size:"
-        Write-LogInfo (FormatFileSize $tempZipFilePath) -Indent 1
-
-        # When using temp folder, need to copy archived file to final destination.
-        if ($Script:TempDir) {
-            # If the folder was empty, the ZIP file will not be created.
-            if ((!$Script:Test) -and (!(Test-Path $tempZipFilePath -PathType Leaf))) {
-                Write-LogWarning "Temp archive file was not created."
-            }
-            else {
-                # Copy temp ZIP file from the backup folder.
-                Write-LogInfo "Copying:"
-                Write-LogInfo $tempZipFilePath -Indent 1
-                Write-LogInfo "to:"
-                Write-LogInfo $zipFilePath -Indent 1
-                Write-LogInfo "at:"
-                Write-LogInfo (GetTimestamp) -Indent 1
-
-                try {
-                    if (!$Script:Test) {
-                        Start-BitsTransfer -Source $tempZipFilePath `
-                            -Destination $zipFilePath -ErrorAction Stop
-                    }
-                }
-                catch {
-                    Write-LogError "Error copying:"
-                    Write-LogError $tempZipFilePath -Indent 1
-                    Write-LogError "to:"
-                    Write-LogError $zipFilePath -Indent 1
-                    WriteLogException $_
-
-                    try {
-                        if ((!$Script:Test) -and (Test-Path $tempZipFilePath -PathType Leaf)) {
-                            Write-Verbose "Deleting '$tempZipFilePath'."
-                            Remove-Item $tempZipFilePath -Force
-                        }
-                    }
-                    catch {
-                        Write-Verbose "Cannot delete '$tempZipFilePath'."
-                        Write-Verbose (FormatError $_)
-                    }
-
-                    throw "BitTransfer operation failed."
-                }
-
-                Write-LogInfo "Completed at:"
-                Write-LogInfo (GetTimestamp) -Indent 1
-
-                # Delete temp file.
-                if (Test-Path -Path $tempZipFilePath -PathType Leaf) {
-                    try {
-                        if ((!$Script:Test) -and (Test-Path $tempZipFilePath -PathType Leaf)) {
-                            Write-Verbose "Deleting '$tempZipFilePath'."
-                            Remove-Item $tempZipFilePath -Force
-                        }
-                    }
-                    catch {
-                        Write-Verbose "Cannot delete '$tempZipFilePath'."
-                        Write-Verbose (FormatError $_)
-
-                        # Non-critical error; can continue.
-                        $Error.Clear()
-                    }
-                }
-            }
-        }
-    }
-
-    WriteDebug "Exiting CompressFolder."
-}
-
-#--------------------------------------------------------------------------
-# CompressFiles
-#   Backs up contents of the Plex app data folder to the compressed files.
-function CompressFiles {
-    [CmdletBinding()]
-    param (
-    )
-    WriteDebug "Entered CompressFiles."
-
-    # Build path to the ZIP file that will hold files from Plex app data folder.
-    $zipFileName = $BACKUP_FILENAME + $Script:ZipFileExt
-    $zipFileDir  = Join-Path $Script:BackupDir $SUBDIR_FILES
-    $zipFilePath = Join-Path $zipFileDir $zipFileName
-
-    # Back up files from root folder, if there are any.
-    if (@(Get-ChildItem (Join-Path $Script:PlexAppDataDir "*") -File ).Count -gt 0) {
-
-        Write-LogInfo "Backing up Plex app data files in the root folder."
-
-        # Delete existing backup file in the BACKUP mode.
+        # Skip if ZIP file already exists.
         if (Test-Path $zipFilePath -PathType Leaf) {
             Write-LogWarning "Backup file:"
             Write-LogWarning $zipFilePath -Indent 1
@@ -2816,92 +2756,282 @@ function CompressFiles {
             }
         }
 
-        # Only process if zip file is not there.
         if (!(Test-Path $zipFilePath -PathType Leaf)) {
-            try {
-                if ($Script:Type -eq $TYPE_7ZIP) {
+            # If a staged temp folder is specified (instead of compressing over network)...
+            if ($Script:TempDir) {
+                $tempZipFileName = $BACKUP_FILENAME + (New-Guid).Guid + $Script:ZipFileExt
+                $tempZipFilePath = Join-Path $Script:TempDir $tempZipFileName
+            }
+            else {
+                # Use temp names for the final files.
+                $tempZipFileName = $zipFileName
+                $tempZipFilePath = $zipFilePath
+            }
 
-                    # Set default arguments for compression.
-                    [Array]$cmdArgs = "a", "$zipFilePath", "-y"
+            Write-LogInfo "Archiving:"
+            Write-LogInfo $sourceDir.FullName -Indent 1
+            Write-LogInfo "to:"
+            Write-LogInfo $tempZipFilePath -Indent 1
+            Write-LogInfo "at:"
+            Write-LogInfo (GetTimestamp) -Indent 1
 
-                    # If we have a list of file types to exclude, set the appropriate argument.
-                    if ($Script:ExcludeFiles -and $Script:ExcludeFiles.Count -gt 0) {
-                        Write-Verbose "Excluding file types: $($Script:ExcludeFiles)"
+            if ($Script:Type -eq $TYPE_7ZIP) {
+                [Array]$cmdArgs = "a", "$tempZipFilePath", (Join-Path $sourceDir.FullName "*"), "-r", "-y"
 
-                        foreach ($excludeFile in $Script:ExcludeFiles) {
-                            if ($excludeFile) {
-                                $cmdArgs += "-x!$excludeFile"
-                            }
+                if ($Script:ExcludeFiles -and $Script:ExcludeFiles.Count -gt 0) {
+                    Write-Verbose "Excluding file types: $excludeFiles"
+
+                    foreach ($excludeFile in $Script:ExcludeFiles) {
+                        if ($excludeFile) {
+                            $cmdArgs += "-x!$excludeFile"
                         }
                     }
+                }
 
-                    # Also, support user-provided command-line switches.
-                    if ($Script:ArchiverOptionsCompress -and $Script:ArchiverOptionsCompress.Count -gt 0) {
-                        Write-Verbose "Setting 7-zip switches: $($Script:ArchiverOptionsCompress)"
+                if ($Script:ArchiverOptionsCompress -and $Script:ArchiverOptionsCompress.Count -gt 0) {
+                    Write-Verbose "Setting 7-zip switches: $($Script:ArchiverOptionsCompress)"
 
-                        foreach ($option in $Script:ArchiverOptionsCompress) {
-                            if ($option) {
-                                $cmdArgs += $option
-                            }
+                    foreach ($option in $Script:ArchiverOptionsCompress) {
+                        if ($option) {
+                            $cmdArgs += $option
                         }
                     }
-                    if (!$Script:Test) {
-                        if ($Script:Quiet -or (!$Script:RawOutput)) {
-                            & $Script:ArchiverPath @cmdArgs (Get-ChildItem (Join-Path $Script:PlexAppDataDir "*") -File) *>&1 | Out-Null
-                        }
-                        else {
-                            & $Script:ArchiverPath @cmdArgs (Get-ChildItem (Join-Path $Script:PlexAppDataDir "*") -File)
-                        }
-                    }
+                }
 
-                    if ($LASTEXITCODE -gt 0) {
-                        throw "7-zip returned '$LASTEXITCODE'."
+                if (!$Script:Test) {
+                    if ($Script:Quiet -or (!$Script:RawOutput)) {
+                        & $Script:ArchiverPath @cmdArgs *>&1 | Out-Null
                     }
+                    else {
+                        & $Script:ArchiverPath @cmdArgs
+                    }
+                }
+
+                if ($LASTEXITCODE -gt 0) {
+                    throw ("7-zip returned '$LASTEXITCODE'.")
+                }
+            }
+            else {
+                if (!$Script:Test) {
+                    Compress-Archive -Path (Join-Path $sourceDir.FullName "*") `
+                        -DestinationPath $tempZipFilePath -Force
+                }
+            }
+
+            Write-LogInfo "Completed at:"
+            Write-LogInfo (GetTimestamp) -Indent 1
+
+            Write-LogInfo "Compressed file size:"
+            Write-LogInfo (FormatFileSize $tempZipFilePath) -Indent 1
+
+            # When using temp folder, need to copy archived file to final destination.
+            if ($Script:TempDir) {
+                # If the folder was empty, the ZIP file will not be created.
+                if ((!$Script:Test) -and (!(Test-Path $tempZipFilePath -PathType Leaf))) {
+                    Write-LogWarning "Temp archive file was not created."
                 }
                 else {
-                    # Use the default compression.
-                    if (!$Script:Test) {
-                        Get-ChildItem -Path $Script:PlexAppDataDir -File | `
-                            Compress-Archive -DestinationPath '$zipFilePath' -Update
+                    # Copy temp ZIP file from the backup folder.
+                    Write-LogInfo "Copying:"
+                    Write-LogInfo $tempZipFilePath -Indent 1
+                    Write-LogInfo "to:"
+                    Write-LogInfo $zipFilePath -Indent 1
+                    Write-LogInfo "at:"
+                    Write-LogInfo (GetTimestamp) -Indent 1
+
+                    try {
+                        if (!$Script:Test) {
+                            Start-BitsTransfer -Source $tempZipFilePath `
+                                -Destination $zipFilePath -ErrorAction Stop
+                        }
+                    }
+                    catch {
+                        Write-LogError "Error copying:"
+                        Write-LogError $tempZipFilePath -Indent 1
+                        Write-LogError "to:"
+                        Write-LogError $zipFilePath -Indent 1
+                        WriteLogException $_
+
+                        try {
+                            if ((!$Script:Test) -and (Test-Path $tempZipFilePath -PathType Leaf)) {
+                                Write-Verbose "Deleting '$tempZipFilePath'."
+                                Remove-Item $tempZipFilePath -Force
+                            }
+                        }
+                        catch {
+                            Write-Verbose "Cannot delete '$tempZipFilePath'."
+                            Write-Verbose (FormatError $_)
+                        }
+
+                        throw "BitTransfer operation failed."
+                    }
+
+                    Write-LogInfo "Completed at:"
+                    Write-LogInfo (GetTimestamp) -Indent 1
+
+                    # Delete temp file.
+                    if (Test-Path -Path $tempZipFilePath -PathType Leaf) {
+                        try {
+                            if ((!$Script:Test) -and (Test-Path $tempZipFilePath -PathType Leaf)) {
+                                Write-Verbose "Deleting '$tempZipFilePath'."
+                                Remove-Item $tempZipFilePath -Force
+                            }
+                        }
+                        catch {
+                            Write-Verbose "Cannot delete '$tempZipFilePath'."
+                            Write-Verbose (FormatError $_)
+
+                            # Non-critical error; can continue.
+                            $Error.Clear()
+                        }
                     }
                 }
+            }
+        }
+    }
+    catch {
+        throw
+    }
+    finally {
+        WriteDebug "Exiting CompressFolder."
+    }
+}
+
+#--------------------------------------------------------------------------
+# CompressFiles
+#   Backs up contents of the Plex app data folder to the compressed files.
+function CompressFiles {
+    [CmdletBinding()]
+    param (
+    )
+    WriteDebug "Entered CompressFiles."
+
+    try {
+        # Build path to the ZIP file that will hold files from Plex app data folder.
+        $zipFileName = $BACKUP_FILENAME + $Script:ZipFileExt
+        $zipFileDir  = Join-Path $Script:BackupDir $SUBDIR_FILES
+        $zipFilePath = Join-Path $zipFileDir $zipFileName
+
+        # Back up files from root folder, if there are any.
+        if (@(Get-ChildItem (Join-Path $Script:PlexAppDataDir "*") -File ).Count -gt 0) {
+
+            Write-LogInfo "Backing up Plex app data files in the root folder."
+
+            # Delete existing backup file in the BACKUP mode.
+            if (Test-Path $zipFilePath -PathType Leaf) {
+                Write-LogWarning "Backup file:"
+                Write-LogWarning $zipFilePath -Indent 1
+                Write-LogWarning "already exists."
+
+                if ($Script:Mode -eq $MODE_BACKUP) {
+                    try {
+                        Write-LogInfo "Deleting:"
+                        Write-LogInfo $zipFilePath -Indent 1
+
+                        if (!$Script:Test) {
+                            Remove-Item $zipFilePath -Force
+                        }
+                    }
+                    catch {
+                        throw (New-Object System.Exception( `
+                            "Cannot delete existing file '$zipFilePath'.",  `
+                            $_.Exception))
+                    }
+                }
+            }
+
+            # Only process if zip file is not there.
+            if (!(Test-Path $zipFilePath -PathType Leaf)) {
+                try {
+                    if ($Script:Type -eq $TYPE_7ZIP) {
+
+                        # Set default arguments for compression.
+                        [Array]$cmdArgs = "a", "$zipFilePath", "-y"
+
+                        # If we have a list of file types to exclude, set the appropriate argument.
+                        if ($Script:ExcludeFiles -and $Script:ExcludeFiles.Count -gt 0) {
+                            Write-Verbose "Excluding file types: $($Script:ExcludeFiles)"
+
+                            foreach ($excludeFile in $Script:ExcludeFiles) {
+                                if ($excludeFile) {
+                                    $cmdArgs += "-x!$excludeFile"
+                                }
+                            }
+                        }
+
+                        # Also, support user-provided command-line switches.
+                        if ($Script:ArchiverOptionsCompress -and $Script:ArchiverOptionsCompress.Count -gt 0) {
+                            Write-Verbose "Setting 7-zip switches: $($Script:ArchiverOptionsCompress)"
+
+                            foreach ($option in $Script:ArchiverOptionsCompress) {
+                                if ($option) {
+                                    $cmdArgs += $option
+                                }
+                            }
+                        }
+                        if (!$Script:Test) {
+                            if ($Script:Quiet -or (!$Script:RawOutput)) {
+                                & $Script:ArchiverPath @cmdArgs (Get-ChildItem (Join-Path $Script:PlexAppDataDir "*") -File) *>&1 | Out-Null
+                            }
+                            else {
+                                & $Script:ArchiverPath @cmdArgs (Get-ChildItem (Join-Path $Script:PlexAppDataDir "*") -File)
+                            }
+                        }
+
+                        if ($LASTEXITCODE -gt 0) {
+                            throw "7-zip returned '$LASTEXITCODE'."
+                        }
+                    }
+                    else {
+                        # Use the default compression.
+                        if (!$Script:Test) {
+                            Get-ChildItem -Path $Script:PlexAppDataDir -File | `
+                                Compress-Archive -DestinationPath '$zipFilePath' -Update
+                        }
+                    }
+                }
+                catch {
+                    throw (New-Object System.Exception( `
+                        "Error compressing files in the Plex app data root folder.", `
+                        $_.Exception))
+                }
+
+                if (Test-Path $zipFilePath -PathType Leaf) {
+                    Write-LogInfo "Completed at:"
+                    Write-LogInfo (GetTimestamp) -Indent 1
+
+                    Write-LogInfo "Compressed file size:"
+                    Write-LogInfo (FormatFileSize $zipFilePath) -Indent 1
+                }
+                else {
+                    Write-LogInfo "No files found in '$Script:PlexAppDataDir' (it's okay)."
+                }
+            }
+        }
+
+        Write-LogInfo "Backing up Plex app data folders."
+
+        $plexAppDataSubDirs = Get-ChildItem $Script:PlexAppDataDir -Directory  |
+            Where-Object { $_.Name -notin $Script:ExcludeDirs }
+
+        foreach ($plexAppDataSubDir in $plexAppDataSubDirs) {
+            try {
+                CompressFolder `
+                    $plexAppDataSubDir `
+                    (Join-Path $Script:BackupDir $SUBDIR_FOLDERS)
             }
             catch {
                 throw (New-Object System.Exception( `
-                    "Error compressing files in the Plex app data root folder.", `
-                    $_.Exception))
-            }
-
-            if (Test-Path $zipFilePath -PathType Leaf) {
-                Write-LogInfo "Completed at:"
-                Write-LogInfo (GetTimestamp) -Indent 1
-
-                Write-LogInfo "Compressed file size:"
-                Write-LogInfo (FormatFileSize $zipFilePath) -Indent 1
-            }
-            else {
-                Write-LogInfo "No files found in '$Script:PlexAppDataDir' (it's okay)."
+                    "Error compressing folder '$plexAppDataSubDir'.", $_.Exception))
             }
         }
     }
-
-    Write-LogInfo "Backing up Plex app data folders."
-
-    $plexAppDataSubDirs = Get-ChildItem $Script:PlexAppDataDir -Directory  |
-        Where-Object { $_.Name -notin $Script:ExcludeDirs }
-
-    foreach ($plexAppDataSubDir in $plexAppDataSubDirs) {
-        try {
-            CompressFolder `
-                $plexAppDataSubDir `
-                (Join-Path $Script:BackupDir $SUBDIR_FOLDERS)
-        }
-        catch {
-            throw (New-Object System.Exception( `
-                "Error compressing folder '$plexAppDataSubDir'.", $_.Exception))
-        }
+    catch {
+        throw
     }
-    WriteDebug "Exiting CompressFiles."
+    finally {
+        WriteDebug "Exiting CompressFiles."
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -2951,6 +3081,7 @@ function PurgeOldBackups {
             }
         }
     }
+
     WriteDebug "Exiting PurgeOldBackups."
 }
 
@@ -2963,95 +3094,125 @@ function SetUpBackupFolder {
     )
     WriteDebug "Entered SetUpBackupFolder."
 
-    # Verify that temp folder exists (if specified).
-    if ($Script:Type -ne $TYPE_7ZIP) {
-        if ($Script:TempDir) {
-            # Make sure temp folder exists.
-            if (!(Test-Path -Path $Script:TempDir -PathType Container)) {
-                try {
-                    Write-LogInfo "Creating temp archive folder:"
-                    Write-LogInfo $Script:TempDir -Indent 1
+    try {
+        # Verify that temp folder exists (if specified).
+        if ($Script:Type -ne $TYPE_7ZIP) {
+            if ($Script:TempDir) {
+                # Make sure temp folder exists.
+                if (!(Test-Path -Path $Script:TempDir -PathType Container)) {
+                    try {
+                        Write-LogInfo "Creating temp archive folder:"
+                        Write-LogInfo $Script:TempDir -Indent 1
 
-                    if (!$Script:Test) {
-                        New-Item -Path $Script:TempDir -ItemType Directory -Force | Out-Null
+                        if (!$Script:Test) {
+                            New-Item -Path $Script:TempDir -ItemType Directory -Force | Out-Null
+                        }
+                    }
+                    catch {
+                        throw (New-Object System.Exception(
+                            "Cannot create temp archive folder '$Script:TempDir'.",
+                            $_.Exception))
                     }
                 }
-                catch {
-                    throw (New-Object System.Exception(
-                        "Cannot create temp archive folder '$Script:TempDir'.",
-                        $_.Exception))
-                }
-            }
-
-            if (!$Script:Test) {
-                $tempFileMask = $BACKUP_FILENAME + "*$Script:ZipFileExt"
-
-                Write-Verbose "Purging '$tempFileMask' from '$Script:TempDir'."
-                Get-ChildItem -Path $Script:TempDir -Include $tempFileMask |
-                        Remove-Item -Force | Out-Null
-            }
-        }
-    }
-
-    # Make sure that the backup parent folder exists.
-    if (!(Test-Path $Script:BackupRootDir -PathType Container)) {
-        try {
-            Write-LogInfo "Creating backup root folder:"
-            Write-LogInfo $Script:BackupRootDir -Indent 1
-
-            if (!$Script:Test) {
-                New-Item -Path $Script:BackupRootDir -ItemType Directory -Force | Out-Null
-            }
-
-        }
-        catch {
-            throw (New-Object System.Exception( `
-                "Failed to create backup root folder '$Script:BackupRootDir'.", `
-                $_.Exception))
-        }
-    }
-
-    # Verify that we got the backup root folder.
-    if (!(Test-Path $Script:BackupRootDir -PathType Container)) {
-        throw "Backup root folder '$Script:BackupRootDir' does not exist."
-    }
-
-    # Build backup folder path.
-    Write-LogInfo "Backup will be saved in:"
-    Write-LogInfo $Script:BackupDir -Indent 1
-
-    PurgeOldBackups
-
-    if (!(Test-Path -Path $Script:BackupDir -PathType Container)) {
-        # Create new backup folder.
-        try {
-                Write-LogInfo "Creating backup folder:"
-                Write-LogInfo $Script:BackupDir -Indent 1
 
                 if (!$Script:Test) {
-                    New-Item -Path $Script:BackupDir -ItemType Directory -Force | Out-Null
+                    $tempFileMask = $BACKUP_FILENAME + "*$Script:ZipFileExt"
+
+                    Write-Verbose "Purging '$tempFileMask' from '$Script:TempDir'."
+                    Get-ChildItem -Path $Script:TempDir -Include $tempFileMask |
+                            Remove-Item -Force | Out-Null
                 }
+            }
         }
-        catch {
-            throw (New-Object System.Exception(
-                "Cannot create backup folder '$Script:BackupDir'.",
-                $_.Exception))
+
+        # Make sure that the backup parent folder exists.
+        if (!(Test-Path $Script:BackupRootDir -PathType Container)) {
+            try {
+                Write-LogInfo "Creating backup root folder:"
+                Write-LogInfo $Script:BackupRootDir -Indent 1
+
+                if (!$Script:Test) {
+                    New-Item -Path $Script:BackupRootDir -ItemType Directory -Force | Out-Null
+                }
+
+            }
+            catch {
+                throw (New-Object System.Exception( `
+                    "Failed to create backup root folder '$Script:BackupRootDir'.", `
+                    $_.Exception))
+            }
         }
-    }
 
-    # List of backup subfolders.
-    $subDirs = @($SUBDIR_FILES, $SUBDIR_FOLDERS, $SUBDIR_REGISTRY, $SUBDIR_SPECIAL)
+        # Verify that we got the backup root folder.
+        if (!(Test-Path $Script:BackupRootDir -PathType Container)) {
+            throw "Backup root folder '$Script:BackupRootDir' does not exist."
+        }
 
-    # For backup mode, let's clear the contents of the subfolders, if they exist.
-    if ($Script:Mode -eq $MODE_BACKUP) {
+        # Build backup folder path.
+        Write-LogInfo "Backup will be saved in:"
+        Write-LogInfo $Script:BackupDir -Indent 1
+
+        PurgeOldBackups
+
+        if (!(Test-Path -Path $Script:BackupDir -PathType Container)) {
+            # Create new backup folder.
+            try {
+                    Write-LogInfo "Creating backup folder:"
+                    Write-LogInfo $Script:BackupDir -Indent 1
+
+                    if (!$Script:Test) {
+                        New-Item -Path $Script:BackupDir -ItemType Directory -Force | Out-Null
+                    }
+            }
+            catch {
+                throw (New-Object System.Exception(
+                    "Cannot create backup folder '$Script:BackupDir'.",
+                    $_.Exception))
+            }
+        }
+
+        # List of backup subfolders.
+        $subDirs = @($SUBDIR_FILES, $SUBDIR_FOLDERS, $SUBDIR_REGISTRY, $SUBDIR_SPECIAL)
+
+        # For backup mode, let's clear the contents of the subfolders, if they exist.
+        if ($Script:Mode -eq $MODE_BACKUP) {
+            $printMsg = $false
+            foreach ($subDir in $subDirs) {
+                $subDirPath = Join-Path $Script:BackupDir $subDir
+
+                # For backup mode, let's clear the contents of the subfolder, if it exists.
+                if (Test-Path -Path $subDirPath -PathType Container) {
+                    if (!$printMsg) {
+                        Write-LogInfo "Purging old backup files from task-specific subfolders in:"
+                        Write-LogInfo $Script:BackupDir -Indent 1
+
+                        $printMsg = $true
+                    }
+
+                    try {
+                        Write-LogInfo $subDir -Indent 2
+
+                        if (!$Script:Test) {
+                            Get-ChildItem -Path $subDirPath -Include * | Remove-Item -Recurse -Force | Out-Null
+                        }
+                    }
+                    catch {
+                        throw (New-Object System.Exception(
+                            "Cannot purge old backup files from folder '$subDirPath'.",
+                            $_.Exception))
+                    }
+                }
+            }
+        }
+
+        # Create subfolders, if needed.
         $printMsg = $false
         foreach ($subDir in $subDirs) {
             $subDirPath = Join-Path $Script:BackupDir $subDir
 
-            # For backup mode, let's clear the contents of the subfolder, if it exists.
-            if (Test-Path -Path $subDirPath -PathType Container) {
+            if (!(Test-Path -Path $subDirPath -PathType Container)) {
                 if (!$printMsg) {
-                    Write-LogInfo "Purging old backup files from task-specific subfolders in:"
+                    Write-LogInfo "Creating task-specific subfolders in:"
                     Write-LogInfo $Script:BackupDir -Indent 1
 
                     $printMsg = $true
@@ -3061,47 +3222,23 @@ function SetUpBackupFolder {
                     Write-LogInfo $subDir -Indent 2
 
                     if (!$Script:Test) {
-                        Get-ChildItem -Path $subDirPath -Include * | Remove-Item -Recurse -Force | Out-Null
+                        New-Item -Path $subDirPath -ItemType Directory -Force | Out-Null
                     }
                 }
                 catch {
                     throw (New-Object System.Exception(
-                        "Cannot purge old backup files from folder '$subDirPath'.",
+                        "Cannot create folder '$subDirPath'.",
                         $_.Exception))
                 }
             }
         }
     }
-
-    # Create subfolders, if needed.
-    $printMsg = $false
-    foreach ($subDir in $subDirs) {
-        $subDirPath = Join-Path $Script:BackupDir $subDir
-
-        if (!(Test-Path -Path $subDirPath -PathType Container)) {
-            if (!$printMsg) {
-                Write-LogInfo "Creating task-specific subfolders in:"
-                Write-LogInfo $Script:BackupDir -Indent 1
-
-                $printMsg = $true
-            }
-
-            try {
-                Write-LogInfo $subDir -Indent 2
-
-                if (!$Script:Test) {
-                    New-Item -Path $subDirPath -ItemType Directory -Force | Out-Null
-                }
-            }
-            catch {
-                throw (New-Object System.Exception(
-                    "Cannot create folder '$subDirPath'.",
-                    $_.Exception))
-            }
-        }
+    catch {
+        throw
     }
-
-    WriteDebug "Exiting SetUpBackupFolder."
+    finally {
+        WriteDebug "Exiting SetUpBackupFolder."
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -3113,56 +3250,104 @@ function Backup {
     )
     WriteDebug "Entered Backup."
 
-    # Just in case the backup folder is on a remote share, try waking it up.
-    WakeUpDir $Script:BackupRootDir
-
-    SetUpBackupFolder
-
-    # Save Plex version first in case we need to run in Continue mode later.
     try {
-        SavePlexVersion
-    }
-    catch {
-        throw (New-Object System.Exception("Error saving Plex Media Server version.", $_.Exception))
-    }
+        # Just in case the backup folder is on a remote share, try waking it up.
+        WakeUpDir $Script:BackupRootDir
 
-    if ($Script:Type -eq $TYPE_ROBOCOPY) {
-        RobocopyFiles `
-                $Script:PlexAppDataDir `
-                (Join-Path $Script:BackupDir $SUBDIR_FILES) `
-                $Script:ExcludeDirs `
-                $Script:ExcludeFiles `
-                $Script:Retries `
-                $Script:RetryWaitSec
-    }
-    else {
-        try
-        {
-            # Temporarily move special subfolders to backup folder.
-            try {
-                BackupSpecialFolders `
-                    $Script:SpecialDirs `
-                    $Script:PlexAppDataDir `
-                    (Join-Path $Script:BackupDir $SUBDIR_SPECIAL)
-            }
-            catch {
-                throw (New-Object System.Exception( `
-                    "Error backing up special folders.", $_.Exception))
-            }
+        SetUpBackupFolder
 
-            # Compress and archive Plex app data.
-            try {
-                CompressFiles
-            }
-            catch {
-                throw (New-Object System.Exception( `
-                    "Error compressing Plex app data files.", $_.Exception))
-            }
+        # Save Plex version first in case we need to run in Continue mode later.
+        try {
+            SavePlexVersion
         }
         catch {
-            throw
+            throw (New-Object System.Exception("Error saving Plex Media Server version.", $_.Exception))
         }
-        finally {
+
+        if ($Script:Type -eq $TYPE_ROBOCOPY) {
+            RobocopyFiles `
+                    $Script:PlexAppDataDir `
+                    (Join-Path $Script:BackupDir $SUBDIR_FILES) `
+                    $Script:ExcludeDirs `
+                    $Script:ExcludeFiles `
+                    $Script:Retries `
+                    $Script:RetryWaitSec
+        }
+        else {
+            try
+            {
+                # Temporarily move special subfolders to backup folder.
+                try {
+                    BackupSpecialFolders `
+                        $Script:SpecialDirs `
+                        $Script:PlexAppDataDir `
+                        (Join-Path $Script:BackupDir $SUBDIR_SPECIAL)
+                }
+                catch {
+                    throw (New-Object System.Exception( `
+                        "Error backing up special folders.", $_.Exception))
+                }
+
+                # Compress and archive Plex app data.
+                try {
+                    CompressFiles
+                }
+                catch {
+                    throw (New-Object System.Exception( `
+                        "Error compressing Plex app data files.", $_.Exception))
+                }
+            }
+            catch {
+                throw
+            }
+            finally {
+                try {
+                    RestoreSpecialFolders `
+                        $Script:SpecialDirs `
+                        $Script:PlexAppDataDir `
+                        (Join-Path $Script:BackupDir $SUBDIR_SPECIAL)
+                }
+                catch {
+                    Write-LogError "Error restoring special folders."
+                    WriteLogException $_
+
+                    $Error.Clear()
+                }
+            }
+        }
+
+        # Export Plex registry keys.
+        foreach ($plexRegKey in $PLEX_REG_KEYS) {
+            if (!(Test-Path -Path $plexRegKey)) {
+                continue
+            }
+
+            $plexRegKey = $plexRegKey.Replace(":", "")
+            $plexRegKeyFilePath = ((Join-Path (Join-Path $Script:BackupDir $SUBDIR_REGISTRY) `
+                ((FormatRegFilename $plexRegKey) + $regFileExt)))
+
+            Write-LogInfo "Exporting registry key:"
+            Write-LogInfo $plexRegKey -Indent 1
+            Write-LogInfo "to:"
+            Write-LogInfo $plexRegKeyFilePath -Indent 1
+
+            try {
+                if (!$Script:Test) {
+                    reg export $plexRegKey $plexRegKeyFilePath /y *>&1 | Out-Null
+                }
+            }
+            catch {
+                WriteLogException $_
+
+                # Non-critical error; can continue.
+                $Error.Clear()
+            }
+
+            $i++
+        }
+
+        # Copy moved special subfolders back to original folders.
+        if ($Script:Type -ne $TYPE_ROBOCOPY) {
             try {
                 RestoreSpecialFolders `
                     $Script:SpecialDirs `
@@ -3170,60 +3355,18 @@ function Backup {
                     (Join-Path $Script:BackupDir $SUBDIR_SPECIAL)
             }
             catch {
-                Write-LogError "Error restoring special folders."
-                WriteLogException $_
-
-                $Error.Clear()
+                throw (New-Object System.Exception( `
+                    "Error restoring special folders after a successful backup.", `
+                    $_.Exception))
             }
         }
     }
-
-    # Export Plex registry keys.
-    foreach ($plexRegKey in $PLEX_REG_KEYS) {
-        if (!(Test-Path -Path $plexRegKey)) {
-            continue
-        }
-
-        $plexRegKey = $plexRegKey.Replace(":", "")
-        $plexRegKeyFilePath = ((Join-Path (Join-Path $Script:BackupDir $SUBDIR_REGISTRY) `
-            ((FormatRegFilename $plexRegKey) + $regFileExt)))
-
-        Write-LogInfo "Exporting registry key:"
-        Write-LogInfo $plexRegKey -Indent 1
-        Write-LogInfo "to:"
-        Write-LogInfo $plexRegKeyFilePath -Indent 1
-
-        try {
-            if (!$Script:Test) {
-                reg export $plexRegKey $plexRegKeyFilePath /y *>&1 | Out-Null
-            }
-        }
-        catch {
-            WriteLogException $_
-
-            # Non-critical error; can continue.
-            $Error.Clear()
-        }
-
-        $i++
+    catch {
+        throw
     }
-
-    # Copy moved special subfolders back to original folders.
-    if ($Script:Type -ne $TYPE_ROBOCOPY) {
-        try {
-            RestoreSpecialFolders `
-                $Script:SpecialDirs `
-                $Script:PlexAppDataDir `
-                (Join-Path $Script:BackupDir $SUBDIR_SPECIAL)
-        }
-        catch {
-            throw (New-Object System.Exception( `
-                "Error restoring special folders after a successful backup.", `
-                $_.Exception))
-        }
+    finally {
+        WriteDebug "Exiting Backup."
     }
-
-    WriteDebug "Exiting Backup."
 }
 
 #--------------------------------------------------------------------------
@@ -3238,106 +3381,112 @@ function DecompressFolder {
     )
     WriteDebug "Entered DecompressFolder."
 
-    $zipFilePath  = $zipFile.FullName
-    $plexAppDataDirName = $zipFile.BaseName
-    $plexAppDataDirPath = Join-Path $plexAppDataDir $plexAppDataDirName
+    try {
+        $zipFilePath  = $zipFile.FullName
+        $plexAppDataDirName = $zipFile.BaseName
+        $plexAppDataDirPath = Join-Path $plexAppDataDir $plexAppDataDirName
 
-    # If we have a temp folder, stage the extracting job.
-    if ($Script:TempDir) {
-        $tempZipFileName = $BACKUP_FILENAME + (New-Guid).Guid + $Script:ZipFileExt
-        $tempZipFilePath = Join-Path $Script:TempDir $tempZipFileName
+        # If we have a temp folder, stage the extracting job.
+        if ($Script:TempDir) {
+            $tempZipFileName = $BACKUP_FILENAME + (New-Guid).Guid + $Script:ZipFileExt
+            $tempZipFilePath = Join-Path $Script:TempDir $tempZipFileName
 
-        # Copy backup archive to a temp zip file.
-        Write-LogInfo "Copying:"
-        Write-LogInfo $zipFilePath -Indent 1
-        Write-LogInfo "to:"
+            # Copy backup archive to a temp zip file.
+            Write-LogInfo "Copying:"
+            Write-LogInfo $zipFilePath -Indent 1
+            Write-LogInfo "to:"
+            Write-LogInfo $tempZipFilePath -Indent 1
+            Write-LogInfo "at:"
+            Write-LogInfo (GetTimestamp) -Indent 1
+
+            try {
+                if (!$Script:Test) {
+                    Start-BitsTransfer -Source $zipFilePath `
+                        -Destination $tempZipFilePath -ErrorAction Stop
+                }
+            }
+            catch {
+                throw (New-Object System.Exception( `
+                    "Error copying '$zipFilePath' to '$tempZipFilePath'.", `
+                    $_.Exception))
+            }
+
+            Write-LogInfo "Completed at:"
+            Write-LogInfo (GetTimestamp) -Indent 1
+        }
+        else {
+            $tempZipFilePath = $zipFilePath
+        }
+
+        Write-LogInfo "Restoring:"
+        Write-LogInfo $plexAppDataDirPath -Indent 1
+        Write-LogInfo "from:"
         Write-LogInfo $tempZipFilePath -Indent 1
         Write-LogInfo "at:"
         Write-LogInfo (GetTimestamp) -Indent 1
 
-        try {
+        if ($Script:Type -eq $TYPE_7ZIP) {
+            [Array]$cmdArgs
+
+            if ($Script:ArchiverOptionsExpand -and $Script:ArchiverOptionsExpand.Count -gt 0) {
+                Write-Verbose "Setting 7-zip switches: $($Script:ArchiverOptionsExpand)"
+
+                foreach ($option in $Script:ArchiverOptionsExpand) {
+                    if ($option) {
+                        $cmdArgs += $option
+                    }
+                }
+            }
+
             if (!$Script:Test) {
-                Start-BitsTransfer -Source $zipFilePath `
-                    -Destination $tempZipFilePath -ErrorAction Stop
+                if ($Script:Quiet -or (!$Script:RawOutput)) {
+                    & $Script:ArchiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" "-aoa" "-y" @cmdArgs *>&1 | Out-Null
+                }
+                else {
+                    & $Script:ArchiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" "-aoa" "-y" @cmdArgs
+                }
+            }
+
+            if ($LASTEXITCODE -gt 0) {
+                throw ("7-zip returned '$LASTEXITCODE'.")
             }
         }
-        catch {
-            throw (New-Object System.Exception( `
-                "Error copying '$zipFilePath' to '$tempZipFilePath'.", `
-                $_.Exception))
+        else {
+            if (!$Script:Test) {
+                Expand-Archive -Path $tempZipFilePath `
+                    -DestinationPath $plexAppDataDirPath -Force
+            }
         }
 
         Write-LogInfo "Completed at:"
         Write-LogInfo (GetTimestamp) -Indent 1
-    }
-    else {
-        $tempZipFilePath = $zipFilePath
-    }
 
-    Write-LogInfo "Restoring:"
-    Write-LogInfo $plexAppDataDirPath -Indent 1
-    Write-LogInfo "from:"
-    Write-LogInfo $tempZipFilePath -Indent 1
-    Write-LogInfo "at:"
-    Write-LogInfo (GetTimestamp) -Indent 1
+        # Delete temp file.
+        if ($Script:TempDir) {
+            Write-LogInfo "Deleting:"
+            Write-LogInfo $tempZipFilePath -Indent 1
 
-    if ($Script:Type -eq $TYPE_7ZIP) {
-        [Array]$cmdArgs
-
-        if ($Script:ArchiverOptionsExpand -and $Script:ArchiverOptionsExpand.Count -gt 0) {
-            Write-Verbose "Setting 7-zip switches: $($Script:ArchiverOptionsExpand)"
-
-            foreach ($option in $Script:ArchiverOptionsExpand) {
-                if ($option) {
-                    $cmdArgs += $option
+            try {
+                if (!$Script:Test) {
+                    Remove-Item $tempZipFilePath -Force
                 }
             }
-        }
+            catch {
+                Write-LogError "Cannot delete temp file:"
+                Write-LogError $tempZipFilePath -Indent 1
+                WriteLogException $_
 
-        if (!$Script:Test) {
-            if ($Script:Quiet -or (!$Script:RawOutput)) {
-                & $Script:ArchiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" "-aoa" "-y" @cmdArgs *>&1 | Out-Null
-            }
-            else {
-                & $Script:ArchiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" "-aoa" "-y" @cmdArgs
-            }
-        }
-
-        if ($LASTEXITCODE -gt 0) {
-            throw ("7-zip returned '$LASTEXITCODE'.")
-        }
-    }
-    else {
-        if (!$Script:Test) {
-            Expand-Archive -Path $tempZipFilePath `
-                -DestinationPath $plexAppDataDirPath -Force
-        }
-    }
-
-    Write-LogInfo "Completed at:"
-    Write-LogInfo (GetTimestamp) -Indent 1
-
-    # Delete temp file.
-    if ($Script:TempDir) {
-        Write-LogInfo "Deleting:"
-        Write-LogInfo $tempZipFilePath -Indent 1
-
-        try {
-            if (!$Script:Test) {
-                Remove-Item $tempZipFilePath -Force
+                # Non-critical error; can continue.
+                $Error.Clear()
             }
         }
-        catch {
-            Write-LogError "Cannot delete temp file:"
-            Write-LogError $tempZipFilePath -Indent 1
-            WriteLogException $_
-
-            # Non-critical error; can continue.
-            $Error.Clear()
-        }
     }
-
-    WriteDebug "Exiting DecompressFolder."
+    catch {
+        throw
+    }
+    finally {
+        WriteDebug "Exiting DecompressFolder."
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -3349,72 +3498,79 @@ function DecompressFiles {
     )
     WriteDebug "Entered DecompressFiles."
 
-    # Build path to the ZIP file that holds files from the root Plex app data folder.
-    $zipFileName = $BACKUP_FILENAME + $Script:ZipFileExt
-    $zipFileDir  = Join-Path $Script:BackupDir $SUBDIR_FILES
-    $zipFilePath = Join-Path $zipFileDir $zipFileName
+    try {
+        # Build path to the ZIP file that holds files from the root Plex app data folder.
+        $zipFileName = $BACKUP_FILENAME + $Script:ZipFileExt
+        $zipFileDir  = Join-Path $Script:BackupDir $SUBDIR_FILES
+        $zipFilePath = Join-Path $zipFileDir $zipFileName
 
-    # Restore files in the root Plex app data folder.
-    if (Test-Path -Path $zipFilePath -PathType Leaf) {
-        Write-LogInfo "Restoring Plex app data files in the root folder."
+        # Restore files in the root Plex app data folder.
+        if (Test-Path -Path $zipFilePath -PathType Leaf) {
+            Write-LogInfo "Restoring Plex app data files in the root folder."
 
-        try {
-            if ($Script:Type -eq $TYPE_7ZIP) {
-                [Array]$cmdArgs
+            try {
+                if ($Script:Type -eq $TYPE_7ZIP) {
+                    [Array]$cmdArgs
 
-                if ($Script:ArchiverOptionsExpand -and $Script:ArchiverOptionsExpand.Count -gt 0) {
-                    Write-Verbose "Setting 7-zip switches: $($Script:ArchiverOptionsExpand)"
+                    if ($Script:ArchiverOptionsExpand -and $Script:ArchiverOptionsExpand.Count -gt 0) {
+                        Write-Verbose "Setting 7-zip switches: $($Script:ArchiverOptionsExpand)"
 
-                    foreach ($option in $Script:ArchiverOptionsExpand) {
-                        if ($option) {
-                            $cmdArgs += $option
+                        foreach ($option in $Script:ArchiverOptionsExpand) {
+                            if ($option) {
+                                $cmdArgs += $option
+                            }
                         }
                     }
-                }
 
-                if (!$Script:Test) {
-                    if ($Script:Quiet -or (!$Script:RawOutput)) {
-                        & $Script:ArchiverPath "x" "$zipFilePath" "-o$Script:PlexAppDataDir" "-y" @cmdArgs *>&1 | Out-Null
+                    if (!$Script:Test) {
+                        if ($Script:Quiet -or (!$Script:RawOutput)) {
+                            & $Script:ArchiverPath "x" "$zipFilePath" "-o$Script:PlexAppDataDir" "-y" @cmdArgs *>&1 | Out-Null
+                        }
+                        else {
+                            & $Script:ArchiverPath "x" "$zipFilePath" "-o$Script:PlexAppDataDir" "-y" @cmdArgs
+                        }
                     }
-                    else {
-                        & $Script:ArchiverPath "x" "$zipFilePath" "-o$Script:PlexAppDataDir" "-y" @cmdArgs
+
+                    if ($LASTEXITCODE -gt 0) {
+                        throw "7-zip returned '$LASTEXITCODE'."
                     }
                 }
-
-                if ($LASTEXITCODE -gt 0) {
-                    throw "7-zip returned '$LASTEXITCODE'."
+                else {
+                    if (!$Script:Test) {
+                        Expand-Archive -Path $zipFilePath -DestinationPath $Script:PlexAppDataDir -Force
+                    }
                 }
             }
-            else {
-                if (!$Script:Test) {
-                    Expand-Archive -Path $zipFilePath -DestinationPath $Script:PlexAppDataDir -Force
-                }
+            catch {
+                throw (New-Object System.Exception( `
+                    "Error decompressing files in the Plex app data root folder.", `
+                    $_.Exception))
             }
         }
-        catch {
-            throw (New-Object System.Exception( `
-                "Error decompressing files in the Plex app data root folder.", `
-                $_.Exception))
+
+        Write-LogInfo "Restoring Plex app data folders."
+
+        $zipFiles = Get-ChildItem `
+            (Join-Path $Script:BackupDir $SUBDIR_FOLDERS) -File  |
+                Where-Object { $_.Extension -eq $Script:ZipFileExt }
+
+        # Restore each Plex app data subfolder from the corresponding backup archive file.
+        foreach ($zipFile in $zipFiles) {
+            try {
+                DecompressFolder $zipFile
+            }
+            catch {
+                throw (New-Object System.Exception( `
+                    "Error decompressing file '$zipFile'.", $_.Exception))
+            }
         }
     }
-
-    Write-LogInfo "Restoring Plex app data folders."
-
-    $zipFiles = Get-ChildItem `
-        (Join-Path $Script:BackupDir $SUBDIR_FOLDERS) -File  |
-            Where-Object { $_.Extension -eq $Script:ZipFileExt }
-
-    # Restore each Plex app data subfolder from the corresponding backup archive file.
-    foreach ($zipFile in $zipFiles) {
-        try {
-            DecompressFolder $zipFile
-        }
-        catch {
-            throw (New-Object System.Exception( `
-                "Error decompressing file '$zipFile'.", $_.Exception))
-        }
+    catch {
+        throw
     }
-    WriteDebug "Exiting CompressFiles."
+    finally {
+        WriteDebug "Exiting CompressFiles."
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -3425,75 +3581,80 @@ function Restore {
     )
     WriteDebug "Entered Restore."
 
-    if ($Script:Type -eq $TYPE_ROBOCOPY) {
-        RobocopyFiles `
-            (Join-Path $Script:BackupDir $SUBDIR_FILES) `
-            $Script:PlexAppDataDir `
-            $null `
-            $null `
-            $Script:Retries `
-            $Script:RetryWaitSec
-    }
-    else {
-        # Compress and archive Plex app data.
-        try {
-            DecompressFiles
-        }
-        catch {
-            throw (New-Object System.Exception( `
-                "Error decompressing Plex app data files.", $_.Exception))
-        }
-
-        # Restore special subfolders.
-        try {
-            RestoreSpecialFolders `
-                $Script:SpecialDirs `
+    try {
+        if ($Script:Type -eq $TYPE_ROBOCOPY) {
+            RobocopyFiles `
+                (Join-Path $Script:BackupDir $SUBDIR_FILES) `
                 $Script:PlexAppDataDir `
-                (Join-Path $Script:BackupDir $subDirSpecial)
+                $null `
+                $null `
+                $Script:Retries `
+                $Script:RetryWaitSec
         }
-        catch {
-            throw (New-Object System.Exception( `
-                "Error restoring special folders.", $_.Exception))
-        }
-    }
+        else {
+            # Compress and archive Plex app data.
+            try {
+                DecompressFiles
+            }
+            catch {
+                throw (New-Object System.Exception( `
+                    "Error decompressing Plex app data files.", $_.Exception))
+            }
 
-    # Import Plex registry keys.
-    $backupRegKeyFiles = Get-ChildItem `
-        (Join-Path $Script:BackupDir $SUBDIR_REGISTRY) -File  |
-            Where-Object { $_.Extension -eq $regFileExt }
-
-    # Restore each Plex app data subfolder from the corresponding backup archive file.
-    $i = 0
-    foreach ($backupRegKeyFile in $backupRegKeyFiles) {
-        $backupRegKeyFilePath = $backupRegKeyFile.FullName
-
-        if ($i++ -eq 0) {
-            Write-LogInfo "Importing registry key file:"
-        }
-        Write-LogInfo $backupRegKeyFilePath -Indent 1
-
-        try {
-            if (!$Script:Test) {
-                # https://stackoverflow.com/questions/61483349/powershell-throws-terminating-error-on-reg-import-but-operation-completes-succes
-                $process = Start-Process reg -ArgumentList "import `"$backupRegKeyFilePath`"" -PassThru -Wait
-
-                if ($process.ExitCode -ne 0) {
-                    throw "Process 'reg import' returned $($process.ExitCode)."
-                }
+            # Restore special subfolders.
+            try {
+                RestoreSpecialFolders `
+                    $Script:SpecialDirs `
+                    $Script:PlexAppDataDir `
+                    (Join-Path $Script:BackupDir $subDirSpecial)
+            }
+            catch {
+                throw (New-Object System.Exception( `
+                    "Error restoring special folders.", $_.Exception))
             }
         }
-        catch {
-            # This is a bogus error that only appears in PowerShell ISE, so ignore.
-            #if (-not ($_.Exception -and $_.Exception.Message -and
-             #    ($_.Exception.Message -match "^The operation completed successfully"))) {
 
-                    throw (New-Object System.Exception( `
-                        "Error importing '$backupRegKeyFilePath'.", $_.Exception))
-            #}
+        # Import Plex registry keys.
+        $backupRegKeyFiles = Get-ChildItem `
+            (Join-Path $Script:BackupDir $SUBDIR_REGISTRY) -File  |
+                Where-Object { $_.Extension -eq $regFileExt }
+
+        # Restore each Plex app data subfolder from the corresponding backup archive file.
+        $i = 0
+        foreach ($backupRegKeyFile in $backupRegKeyFiles) {
+            $backupRegKeyFilePath = $backupRegKeyFile.FullName
+
+            if ($i++ -eq 0) {
+                Write-LogInfo "Importing registry key file:"
+            }
+            Write-LogInfo $backupRegKeyFilePath -Indent 1
+
+            try {
+                if (!$Script:Test) {
+                    # https://stackoverflow.com/questions/61483349/powershell-throws-terminating-error-on-reg-import-but-operation-completes-succes
+                    $process = Start-Process reg -ArgumentList "import `"$backupRegKeyFilePath`"" -PassThru -Wait
+
+                    if ($process.ExitCode -ne 0) {
+                        throw "Process 'reg import' returned $($process.ExitCode)."
+                    }
+                }
+            }
+            catch {
+                # This is a bogus error that only appears in PowerShell ISE, so ignore.
+                #if (-not ($_.Exception -and $_.Exception.Message -and
+                #    ($_.Exception.Message -match "^The operation completed successfully"))) {
+                        throw (New-Object System.Exception( `
+                            "Error importing '$backupRegKeyFilePath'.", $_.Exception))
+                #}
+            }
         }
     }
-
-    WriteDebug "Exiting Restore."
+    catch {
+        throw
+    }
+    finally {
+        WriteDebug "Exiting Restore."
+    }
 }
 
 #--------------------------------------------------------------------------
@@ -3505,158 +3666,164 @@ function ProcessBackup {
     )
     WriteDebug "Entered ProcessBackup."
 
-    Write-LogInfo "Operation mode:"
-    $mode = $Script:Mode.ToUpper()
-    if ($Script:Test) {
-        $mode += " (TEST)"
-    }
-    Write-LogInfo $mode.ToUpper() -Indent 1
-
-    Write-LogInfo "Backup type:"
-    if ($Script:Type) {
-        Write-LogInfo $Script:Type.ToUpper() -Indent 1
-    } else {
-        Write-LogInfo "DEFAULT" -Indent 1
-    }
-
-    if ($Script:PlexVersion) {
-        Write-LogInfo "Plex version:"
-        Write-LogInfo $Script:PlexVersion -Indent 1
-    }
-
-    if ($Script:BackupVersion) {
-        Write-LogInfo "Backup version:"
-        Write-LogInfo $Script:BackupVersion -Indent 1
-    }
-
-    if ($Script:LogFile) {
-        Write-LogInfo "Log file:"
-        Write-LogInfo $Script:LogFile -Indent 1
-    }
-
-    if ($Script:ErrorLogFile) {
-        Write-LogInfo "Error log file:"
-        Write-LogInfo $Script:ErrorLogFile -Indent 1
-    }
-
-    [object[]]$plexServices = $null
-
-    $success = $false
-
     try {
-        # Get list of all running Plex services (match by display name).
-        try {
-            $plexServices = GetPlexServices
+        Write-LogInfo "Operation mode:"
+        $mode = $Script:Mode.ToUpper()
+        if ($Script:Test) {
+            $mode += " (TEST)"
         }
-        catch {
-            throw (New-Object System.Exception( `
-                "Error enumerating Plex Windows services.", $_.Exception))
+        Write-LogInfo $mode.ToUpper() -Indent 1
+
+        Write-LogInfo "Backup type:"
+        if ($Script:Type) {
+            Write-LogInfo $Script:Type.ToUpper() -Indent 1
+        } else {
+            Write-LogInfo "DEFAULT" -Indent 1
         }
 
-        # Stop all running Plex services and Plex process.
-        $success, $plexServices = StopPlexServices $plexServices
-
-        if (!$success) {
-            throw "Error stopping Plex Windows services."
+        if ($Script:PlexVersion) {
+            Write-LogInfo "Plex version:"
+            Write-LogInfo $Script:PlexVersion -Indent 1
         }
+
+        if ($Script:BackupVersion) {
+            Write-LogInfo "Backup version:"
+            Write-LogInfo $Script:BackupVersion -Indent 1
+        }
+
+        if ($Script:LogFile) {
+            Write-LogInfo "Log file:"
+            Write-LogInfo $Script:LogFile -Indent 1
+        }
+
+        if ($Script:ErrorLogFile) {
+            Write-LogInfo "Error log file:"
+            Write-LogInfo $Script:ErrorLogFile -Indent 1
+        }
+
+        [object[]]$plexServices = $null
 
         $success = $false
 
-        StopPlexMediaServer
-
-        if ($Script:Mode -eq $MODE_RESTORE) {
-            Restore
-        }
-        else {
-            Backup
-        }
-
-        $success = $true
-
         try {
-            [string]$dir = $null
+            # Get list of all running Plex services (match by display name).
+            try {
+                $plexServices = GetPlexServices
+            }
+            catch {
+                throw (New-Object System.Exception( `
+                    "Error enumerating Plex Windows services.", $_.Exception))
+            }
+
+            # Stop all running Plex services and Plex process.
+            $success, $plexServices = StopPlexServices $plexServices
+
+            if (!$success) {
+                throw "Error stopping Plex Windows services."
+            }
+
+            $success = $false
+
+            StopPlexMediaServer
 
             if ($Script:Mode -eq $MODE_RESTORE) {
-                $dir = $Script:PlexAppDataDir
+                Restore
             }
             else {
-                $dir = $Script:BackupDir
+                Backup
             }
 
-            $backupInfo = Get-ChildItem -Recurse -File $dir | Measure-Object -Property Length -Sum
+            $success = $true
 
-            $Script:ObjectCount = "{0:N0}" -f $backupInfo.Count
-            $Script:BackupSIze  = ([math]::round($backupInfo.Sum /1Gb, 1)).ToString()
-        }
-        catch {
-            Write-LogError "Error calculating backup statistics."
-            Write-LogException $_
-            $Error.Clear()
-        }
+            try {
+                [string]$dir = $null
 
-        try {
-            # Log off all currently logged on users except the current user.
-            if ($Script:Logoff) {
+                if ($Script:Mode -eq $MODE_RESTORE) {
+                    $dir = $Script:PlexAppDataDir
+                }
+                else {
+                    $dir = $Script:BackupDir
+                }
 
-                Write-LogInfo "Logging off all other users connected to this computer."
+                $backupInfo = Get-ChildItem -Recurse -File $dir | Measure-Object -Property Length -Sum
 
-                if (!$Script:Test) {
-                    quser | Select-String "Disc" | ForEach-Object {logoff ($_.ToString() -split ' +')[2]}
+                $Script:ObjectCount = "{0:N0}" -f $backupInfo.Count
+                $Script:BackupSIze  = ([math]::round($backupInfo.Sum /1Gb, 1)).ToString()
+            }
+            catch {
+                Write-LogError "Error calculating backup statistics."
+                Write-LogException $_
+                $Error.Clear()
+            }
+
+            try {
+                # Log off all currently logged on users except the current user.
+                if ($Script:Logoff) {
+
+                    Write-LogInfo "Logging off all other users connected to this computer."
+
+                    if (!$Script:Test) {
+                        quser | Select-String "Disc" | ForEach-Object {logoff ($_.ToString() -split ' +')[2]}
+                    }
                 }
             }
+            catch {
+                Write-Error "Attempt to log off other users connected to this computer failed."
+                WriteLogException $_
+
+                $Error.Clear()
+            }
+
+            # Wake up a NAS share if needed.
+            try {
+                if ($Script:WakeUpDir) {
+                    Write-LogInfo "Waking up '$Script:WakeUpDir'."
+                    WakeUpDir $Script:WakeUpDir
+                }
+            }
+            catch {
+                Write-Error "Attempt to wake up '$Script:WakeUpDir' failed."
+                WriteLogException $_
+
+                $Error.Clear()
+            }
+
+            if ($Script:Mode -eq $MODE_RESTORE) {
+                Write-LogInfo "Restore operation completed."
+            }
+            else {
+                Write-LogInfo "Backup operation completed."
+            }
+
+            $success = $true
         }
         catch {
-            Write-Error "Attempt to log off other users connected to this computer failed."
             WriteLogException $_
+
+            $Script:ErrorResult = FormatError $_
 
             $Error.Clear()
         }
+        finally {
+            $Script:EndTime = Get-Date
+            $Script:Duration = (New-TimeSpan -Start $Script:StartTime `
+                -End $Script:EndTime).ToString("hh\:mm\:ss\.fff")
 
-        # Wake up a NAS share if needed.
-        try {
-            if ($Script:WakeUpDir) {
-                Write-LogInfo "Waking up '$Script:WakeUpDir'."
-                WakeUpDir $Script:WakeUpDir
+            # Resturn Plex unless instructed to do otherwise
+            # (do not restart after failed restore).
+            if ((!$Script:NoRestart) -and
+                ($success -or $Script:Mode -ne $MODE_RESTORE)) {
+                StartPlexServices $plexServices
+                StartPlexMediaServer
             }
         }
-        catch {
-            Write-Error "Attempt to wake up '$Script:WakeUpDir' failed."
-            WriteLogException $_
-
-            $Error.Clear()
-        }
-
-        if ($Script:Mode -eq $MODE_RESTORE) {
-            Write-LogInfo "Restore operation completed."
-        }
-        else {
-            Write-LogInfo "Backup operation completed."
-        }
-
-        $success = $true
     }
     catch {
-        WriteLogException $_
-
-        $Script:ErrorResult = FormatError $_
-
-        $Error.Clear()
+        throw
     }
     finally {
-        $Script:EndTime = Get-Date
-        $Script:Duration = (New-TimeSpan -Start $Script:StartTime `
-            -End $Script:EndTime).ToString("hh\:mm\:ss\.fff")
-
-        # Resturn Plex unless instructed to do otherwise
-        # (do not restart after failed restore).
-        if ((!$Script:NoRestart) -and
-            ($success -or $Script:Mode -ne $MODE_RESTORE)) {
-            StartPlexServices $plexServices
-            StartPlexMediaServer
-        }
+        WriteDebug "Exiting ProcessBackup."
     }
-
-    WriteDebug "Exiting ProcessBackup."
 }
 
 #-------------------------------[ PROGRAM ]--------------------------------
@@ -3671,13 +3838,18 @@ $LASTEXITCODE = 0
 # Assume that SMTP server does not require authentication for now.
 [System.Management.Automation.PSCredential]$credential = $null
 
+WriteDebug "Entered Main."
+
 try {
     try {
+        $psVersion = GetPowerShellversion
+        Write-Verbose "Microsoft PowerShell v$psVersion"
+
         # Add custom folder(s) to the module path.
         SetModulePath
 
         # Load module dependencies.
-        LoadModules
+        LoadModules $MODULES
     }
     catch {
         throw (New-Object System.Exception( `
@@ -3774,13 +3946,15 @@ catch {
         # Print error to screen.
         WriteException $_
     }
-
-    # We may need to dispose logging resources (i.e. stream writers).
-    StopLogging
 }
 finally {
     # Close mutex enforcing single-instance operation.
-    Exit-SingleInstance
+    if (Get-Module -Name $MODULE_SingleInstance) {
+        Exit-SingleInstance
+    }
+    else {
+        Write-Verbose "$MODULE_SingleInstance module is not loaded."
+    }
 
     # We may need to dispose logging resources (i.e. stream writers).
     StopLogging
@@ -3800,8 +3974,8 @@ finally {
 
         # Reboot only on success and not in restore mode.
         if (($Script:Reboot -or $Script:ForceReboot) -and
-            $Script:ExitCode -eq $EXITCODE_SUCCESS -and
-            $Script:Mode -ne $MODE_RESTORE) {
+             $Script:ExitCode -eq $EXITCODE_SUCCESS -and
+             $Script:Mode -ne $MODE_RESTORE) {
 
             Write-Verbose "Rebooting computer."
 
@@ -3817,12 +3991,13 @@ finally {
                 }
             }
         }
-
-        Write-Verbose "The end."
     }
     catch {
         WriteException $_
         $Error.Clear()
+    }
+    finally {
+        WriteDebug "Exiting Main."
     }
 
     exit $Script:ExitCode
