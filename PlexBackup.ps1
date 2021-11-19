@@ -236,12 +236,12 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
 .NOTES
-Version    : 2.1.1
+Version    : 2.1.2
 Author     : Alek Davis
-Created on : 2021-10-26
+Created on : 2021-11-19
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
-Copyright  : (c) 2019-2021 Alek Davis
+Copyright  : (c) Alek Davis
 
 .LINK
 https://github.com/alekdavis/PlexBackup
@@ -889,12 +889,14 @@ function LoadModules {
             }
 
             if ($moduleMaxVersion) {
-             Write-Verbose "Required module max version: '$moduleMaxVersion'."
+                Write-Verbose "Required module max version: '$moduleMaxVersion'."
             }
 
             # Check if module is loaded into the process.
             $loadedModules = Get-Module -Name $moduleName
-            $isLoaded = $false
+
+            $isLoaded       = $false
+            $isInstalled    = $false
 
             if ($loadedModules) {
                 Write-Verbose "Module '$moduleName' is loaded."
@@ -909,7 +911,8 @@ function LoadModules {
 
                         if (IsSupportedVersion $moduleVersion $moduleMinVersion $moduleMaxVersion) {
                             Write-Verbose "Loaded module '$moduleName' version '$moduleVersion' is supported."
-                            $isLoaded = $true
+                            $isLoaded       = $true
+                            $isInstalled    = $true
                             break
                         }
                         else {
@@ -918,7 +921,8 @@ function LoadModules {
                     }
                 }
                 else {
-                    $isLoaded = $true
+                    $isLoaded       = $true
+                    $isInstalled    = $true
                 }
             }
 
@@ -945,21 +949,23 @@ function LoadModules {
                         }
 
                         Write-Verbose "Module '$moduleName' version '$moduleVersion' is not supported."
-                        Write-Verbose "Supported module '$moduleName' versions are: '$minVersion'-'$maxVersion'."
-                    }
-
-                    if (!$isInstalled) {
-
-                        # Download module if needed.
-                        Write-Verbose "Installing module '$moduleName'."
-                        Install-Module -Name $moduleName @cmdArgs -Force -Scope CurrentUser -ErrorAction Stop
+                        Write-Verbose "Supported module '$moduleName' versions are: '$moduleMinVersion'-'$moduleMaxVersion'."
                     }
                 }
+            }
+
+            if (!$isInstalled) {
+
+                # Download module if needed.
+                Write-Verbose "Installing module '$moduleName'."
+                Install-Module -Name $moduleName @cmdArgs -Force -Scope CurrentUser -ErrorAction Stop
             }
 
             #  Import module into the process.
             Write-Verbose "Importing module '$moduleName'."
             Import-Module $moduleName -ErrorAction Stop -Force @cmdArgs
+            Write-Verbose "Imported module '$moduleName'."
+
         }
     }
     catch {
