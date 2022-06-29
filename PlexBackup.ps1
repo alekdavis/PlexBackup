@@ -3292,7 +3292,7 @@ function PurgeOldBackups {
                     }
                 }
                 catch {
-                    Write-LogError "Cannot delete folder '$($oldBackupDir.FullName)."
+                    Write-LogError "Cannot delete folder '$($oldBackupDir.FullName)'."
                     WriteLogException $_
 
                     # Non-critical error; can continue.
