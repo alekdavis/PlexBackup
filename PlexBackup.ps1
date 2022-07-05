@@ -236,9 +236,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
 .NOTES
-Version    : 2.1.3
+Version    : 2.1.4
 Author     : Alek Davis
-Created on : 2022-06-29
+Created on : 2022-07-05
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) Alek Davis
@@ -565,13 +565,13 @@ $ArchiverOptionsExpand =
 
 $MODULE_ScriptVersion   = "ScriptVersion"
 $MODULE_ConfigFile      = "ConfigFile"
-$MODULE_StreamLogging   = "StreamLogging|1.2.1"
+$MODULE_StreamLogging   = "StreamLogging"
 $MODULE_SingleInstance  = "SingleInstance"
 
 $MODULES = @(
     $MODULE_ScriptVersion,
     $MODULE_ConfigFile,
-    $MODULE_StreamLogging,
+    "$MODULE_StreamLogging|1.2.1",
     $MODULE_SingleInstance
 )
 
@@ -4155,7 +4155,7 @@ catch {
     if (!$Script:ErrorResult) {
         $Script:ErrorResult = FormatError $_
     }
-    
+
     # Set end time if needed.
     while ($Script:EndTime -eq $Script:StartTime) {
         Start-Sleep -Milliseconds 10
