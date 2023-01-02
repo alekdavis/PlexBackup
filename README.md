@@ -624,7 +624,7 @@ Tells the script not to use the Secure Sockets Layer (SSL) protocol when connect
 Path to the file holding username and encrypted password of the account that has permission to send mail via the SMTP server. You can generate the file via the following PowerShell command:
 
 ```PowerShell
-Get-Credential | Export-CliXml -Path "PathToFile.xml"`
+Get-Credential | Export-CliXml -Path "PathToFile.xml"
 ```
 
 The default log file will be created in the backup folder and will be named after this script with the '.xml' extension, such as 'PlexBackup.ps1.xml'.
