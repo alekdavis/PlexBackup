@@ -236,9 +236,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
 .NOTES
-Version    : 2.1.4
+Version    : 2.1.5
 Author     : Alek Davis
-Created on : 2022-07-05
+Created on : 2023-07-03
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) Alek Davis
@@ -724,7 +724,6 @@ function GetModuleVersion {
     $build = $moduleInfo.Version.Build
 
     return "$major.$minor.$build"
-
 }
 
 #--------------------------------------------------------------------------
@@ -1704,9 +1703,6 @@ function InitMail {
             $Script:SendMail = $SEND_MAIL_NEVER
         }
     }
-    catch {
-        throw
-    }
     finally {
         WriteDebug "Exiting InitMail."
     }
@@ -1735,11 +1731,7 @@ function Validate7Zip {
             }
         }
     }
-    catch {
-        throw
-    }
     finally {
-
         WriteDebug "Exiting Validate7Zip."
     }
 }
@@ -1772,9 +1764,7 @@ function ValidateVersion {
             if ($Script:PlexVersion -ne $Script:BackupVersion) {
                 Write-Verbose "Version mismatch is detected."
 
-                if ($Script:NoVersion) {
-                }
-                else {
+                if (!$Script:NoVersion) {
                     throw "Backup version '$Script:BackupVersion' does not match " +
                         "version '$Script:PlexVersion' of the Plex Media Server. " +
                         "To ignore version check, run the script with the " +
@@ -1834,9 +1824,6 @@ function ValidateData {
             }
         }
     }
-    catch {
-        throw
-    }
     finally {
         WriteDebug "Exiting ValidateData."
     }
@@ -1860,9 +1847,6 @@ function ValidateSingleInstance {
                 throw "The script is already running."
             }
         }
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting ValidateSingleInstance."
@@ -2015,12 +1999,8 @@ function GetPlexServerPath {
             throw "Plex Media Server executable file '$Script:PlexServerPath' does not exist."
         }
     }
-    catch {
-        throw
-    }
     finally {
         WriteDebug "Exiting GetPlexServerPath."
-
     }
 
     return $Script:PlexServerPath
@@ -2061,9 +2041,6 @@ function GetPlexVersion {
             }
         }
     }
-    catch {
-        throw
-    }
     finally {
         WriteDebug "Exiting GetPlexVersion."
     }
@@ -2095,9 +2072,6 @@ function GetBackupVersion {
                         $_.Exception))
             }
         }
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting GetBackupVersion."
@@ -2293,9 +2267,6 @@ function StopPlexMediaServer {
                 }
             }
         }
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting StopPlexMediaServer."
@@ -2696,9 +2667,6 @@ function RobocopyFiles {
         Write-LogInfo "Completed at:"
         Write-LogInfo (GetTimestamp) -Indent 1
     }
-    catch {
-        throw
-    }
     finally {
         WriteDebug "Exiting RobocopyFiles."
     }
@@ -2756,9 +2724,6 @@ function MoveFolder {
 
         Write-LogInfo "Completed at:"
         Write-LogInfo (GetTimestamp) -Indent 1
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting MoveFolder."
@@ -2818,9 +2783,6 @@ function CopyFolder {
         Write-LogInfo "Completed at:"
         Write-LogInfo (GetTimestamp) -Indent 1
     }
-    catch {
-        throw
-    }
     finally {
         WriteDebug "Exiting CopyFolder."
     }
@@ -2874,9 +2836,6 @@ function BackupSpecialFolders {
             }
         }
     }
-    catch {
-        throw
-    }
     finally {
         WriteDebug "Exiting BackupSpecialFolders."
     }
@@ -2926,9 +2885,6 @@ function RestoreSpecialFolders {
                 }
             }
         }
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting RestoreSpecialFolders."
@@ -3028,7 +2984,7 @@ function CompressFolder {
                 }
 
                 if ($LASTEXITCODE -gt 0) {
-                    throw ("7-zip returned '$LASTEXITCODE'.")
+                    throw "7-zip returned '$LASTEXITCODE'."
                 }
             }
             else {
@@ -3108,9 +3064,6 @@ function CompressFolder {
                 }
             }
         }
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting CompressFolder."
@@ -3245,9 +3198,6 @@ function CompressFiles {
                     "Error compressing folder '$plexAppDataSubDir'.", $_.Exception))
             }
         }
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting CompressFiles."
@@ -3453,9 +3403,6 @@ function SetUpBackupFolder {
             }
         }
     }
-    catch {
-        throw
-    }
     finally {
         WriteDebug "Exiting SetUpBackupFolder."
     }
@@ -3517,9 +3464,6 @@ function Backup {
                         "Error compressing Plex app data files.", $_.Exception))
                 }
             }
-            catch {
-                throw
-            }
             finally {
                 try {
                     RestoreSpecialFolders `
@@ -3580,9 +3524,6 @@ function Backup {
                     $_.Exception))
             }
         }
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting Backup."
@@ -3668,7 +3609,7 @@ function DecompressFolder {
             }
 
             if ($LASTEXITCODE -gt 0) {
-                throw ("7-zip returned '$LASTEXITCODE'.")
+                throw "7-zip returned '$LASTEXITCODE'."
             }
         }
         else {
@@ -3700,9 +3641,6 @@ function DecompressFolder {
                 $Error.Clear()
             }
         }
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting DecompressFolder."
@@ -3785,9 +3723,6 @@ function DecompressFiles {
             }
         }
     }
-    catch {
-        throw
-    }
     finally {
         WriteDebug "Exiting CompressFiles."
     }
@@ -3868,9 +3803,6 @@ function Restore {
                 #}
             }
         }
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting Restore."
@@ -4037,9 +3969,6 @@ function ProcessBackup {
                 StartPlexMediaServer
             }
         }
-    }
-    catch {
-        throw
     }
     finally {
         WriteDebug "Exiting ProcessBackup."
