@@ -236,9 +236,9 @@ Reboots the computer after a successful backup operation (ignored on restore).
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
 .NOTES
-Version    : 2.1.5
+Version    : 2.1.6
 Author     : Alek Davis
-Created on : 2023-07-03
+Created on : 2023-07-04
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) Alek Davis
@@ -1736,6 +1736,37 @@ function Validate7Zip {
     }
 }
 
+
+#--------------------------------------------------------------------------
+# Get7ZipError
+#   Get error message for error code returned by 7-zip.
+#   Based on https://documentation.help/7-Zip/exit_codes.htm
+function Get7ZipError {
+    [CmdletBinding()]
+    param(
+        [int]
+        $exitCode
+    )
+
+    $msg = "Unknown error."
+
+    if ($exitCode -eq 0) {
+        $msg = "No error."
+    } elseif ($exitCode -eq 1) {
+        $msg = "Warning (Non fatal error(s)). For example, one or more files were locked by some other application, so they were not compressed."
+    } elseif ($exitCode -eq 2) {
+        $msg = "Fatal error."
+    } elseif ($exitCode -eq 7) {
+        $msg = "Command line error."
+    } elseif ($exitCode -eq 8) {
+        $msg = "Not enough memory for operation."
+    } elseif ($exitCode -eq 255) {
+        $msg = "User stopped the process."
+    }
+
+    return "7-zip returned error code '$exitCode': $msg"
+}
+
 #--------------------------------------------------------------------------
 # ValidateVersion
 #   Validates backup version.
@@ -2984,7 +3015,7 @@ function CompressFolder {
                 }
 
                 if ($LASTEXITCODE -gt 0) {
-                    throw "7-zip returned '$LASTEXITCODE'."
+                    throw (Get7ZipError $LASTEXITCODE)
                 }
             }
             else {
@@ -3152,7 +3183,7 @@ function CompressFiles {
                         }
 
                         if ($LASTEXITCODE -gt 0) {
-                            throw "7-zip returned '$LASTEXITCODE'."
+                            throw (Get7ZipError $LASTEXITCODE)
                         }
                     }
                     else {
@@ -3609,7 +3640,7 @@ function DecompressFolder {
             }
 
             if ($LASTEXITCODE -gt 0) {
-                throw "7-zip returned '$LASTEXITCODE'."
+                throw (Get7ZipError $LASTEXITCODE)
             }
         }
         else {
@@ -3690,7 +3721,7 @@ function DecompressFiles {
                     }
 
                     if ($LASTEXITCODE -gt 0) {
-                        throw "7-zip returned '$LASTEXITCODE'."
+                        throw (Get7ZipError $LASTEXITCODE)
                     }
                 }
                 else {
