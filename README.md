@@ -302,6 +302,13 @@ A config file must use [JSON formatting](https://www.json.org/), such as:
             "default":  ["-aoa","-y"]
         },
         "value": null
+    },
+    "Machine": {
+        "_meta": {
+            "set": "x86,amd64",
+            "default": null
+        },
+        "value": null
     }
 }
 ```
