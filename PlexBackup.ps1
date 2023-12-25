@@ -219,7 +219,7 @@ When set, the SMTP credentials will be saved in a file (encrypted with user- and
 Tells the script to not use credentials when sending email notifications.
 
 .PARAMETER SendLogFile
-Indicates in which case the script must send an attachment along with th email notification
+Indicates in which case the script must send an attachment along with th email notification:
 
 - Never (default)
 - Always
@@ -235,10 +235,18 @@ Reboots the computer after a successful backup operation (ignored on restore).
 .PARAMETER ForceReboot
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
 
+.PARAMETER Machine
+Intends to overcome an infrequent error "87: The parameter is incorrect" returned by the runas command attempting to relaunch Plex Media Server:
+
+- x86
+- amd64
+
+Keep in mind that these refer to the architecture of the Plex Media Server executable, not to the computer on which it runs, so for the 32-bit version of the server, use 'x86' and for the 64-bit version, use 'amd64'. Do not use this flag if you do not get error 87.
+
 .NOTES
-Version    : 2.1.6
+Version    : 2.1.7
 Author     : Alek Davis
-Created on : 2023-07-04
+Created on : 2023-12-25
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) Alek Davis
@@ -498,7 +506,11 @@ param (
     $Reboot,
 
     [switch]
-    $ForceReboot
+    $ForceReboot,
+
+    [ValidateSet("x86", "amd64")]
+    [string]
+    $Machine
 )
 #---------------[ VARIABLES CONFIGURABLE VIA CONFIG FILE ]-----------------
 
@@ -651,12 +663,12 @@ $ZipFileExt = $FILE_EXT_ZIP
 $RegFileExt = $FILE_EXT_REG
 
 # Files and folders.
-[string]$BackupDirName      = $null
-[string]$VersionFilePath    = $null
+[string]$BackupDirName   = $null
+[string]$VersionFilePath = $null
 
 # Version info.
-[string]$PlexVersion         = $null
-[string]$BackupVersion      = $null
+[string]$PlexVersion    = $null
+[string]$BackupVersion  = $null
 
 # Save time for logging purposes.
 [DateTime]$StartTime    = Get-Date
@@ -664,14 +676,14 @@ $RegFileExt = $FILE_EXT_REG
 [string]  $Duration     = $null
 
 # Mail credentials object.
-[PSCredential]$Credential  = $null
+[PSCredential]$Credential = $null
 
 # Error message set in case of error.
-[string]$ErrorResult       = $null
+[string]$ErrorResult = $null
 
 # Backup stats.
-[string]$ObjectCount  = "UNKNOWN"
-[string]$BackupSize   = "UNKNOWN"
+[string]$ObjectCount = "UNKNOWN"
+[string]$BackupSize  = "UNKNOWN"
 
 # The default exit code indicates error (we'll set it to success at the end).
 $ExitCode = $EXITCODE_ERROR
@@ -913,13 +925,11 @@ function LoadModules {
                             $isLoaded       = $true
                             $isInstalled    = $true
                             break
-                        }
-                        else {
+                        } else {
                             Write-Verbose "Loaded module '$moduleName' version '$moduleVersion' is not supported."
                         }
                     }
-                }
-                else {
+                } else {
                     $isLoaded       = $true
                     $isInstalled    = $true
                 }
@@ -1006,7 +1016,7 @@ function GetPowerShellVersion {
 
     $psVersion = $PSVersionTable.PSVersion
 
-    WriteDebug "Exiting GetScriptVersion."
+    WriteDebug "Exiting GetPowerShellVersion."
 
     return ($psVersion.Major.ToString() + '.' +
             $psVersion.Minor.ToString() + '.' +
@@ -1029,8 +1039,7 @@ function GetCommandLineArgs {
         for ($i = 0; $i -lt $args.Count; $i++) {
             if ($args[$i].Contains(" ")) {
                 $commandLine = $commandLine + '"' + $args[$i] + '" '
-            }
-            else {
+            } else {
                 $commandLine = $commandLine + $args[$i] + ' '
             }
         }
@@ -1061,8 +1070,7 @@ function FormatError {
     while ($ex) {
         if ($message) {
             $message += " $($ex.Message)"
-        }
-        else {
+        } else {
             $message = $ex.Message
         }
 
@@ -1150,8 +1158,7 @@ function StartLogging {
     if ($Script:LogFile) {
         Write-Verbose "Setting log file to '$Script:LogFile'."
         $logArgs.Add("FilePath", $Script:LogFile)
-    }
-    else {
+    } else {
         Write-Verbose "Not using log file."
         $logArgs.Add("File", $false)
     }
@@ -1165,8 +1172,7 @@ function StartLogging {
     if ($Script:ErrorLogFile) {
         Write-Verbose "Setting error log file to '$Script:ErrorLogFile'."
         $logArgs.Add("ErrorFilePath", $Script:ErrorLogFile)
-    }
-    else {
+    } else {
         Write-Verbose "Not using error log file."
         $logArgs.Add("ErrorFile", $false)
     }
@@ -1205,12 +1211,10 @@ function StopLogging {
 
                 $Error.Clear()
             }
-        }
-        else {
+        } else {
             Write-Verbose "Logging has not started, so nothing to uninitialize."
         }
-    }
-    else {
+    } else {
         Write-Verbose "$MODULE_StreamLogging module is not loaded."
     }
 
@@ -1264,8 +1268,7 @@ function Epilogue {
         if (!$Script:ErrorResult) {
             if ($Script:Mode -ne $MODE_RESTORE) {
                 Write-LogInfo "Plex backup size:"
-            }
-            else {
+            } else {
                 Write-LogInfo "Plex app data size:"
             }
 
@@ -1286,8 +1289,7 @@ function Epilogue {
         Write-LogInfo "Script execution result:"
         if ($Script:ErrorResult) {
             Write-LogInfo "ERROR" -Indent 1
-        }
-        else {
+        } else {
             Write-LogInfo "SUCCESS" -Indent 1
         }
 
@@ -1325,8 +1327,7 @@ function InitGlobals {
     }
     elseif ($Script:Restore) {
         $Script:Mode = $MODE_RESTORE
-    }
-    else {
+    } else {
         if (!$Script:Mode) {
             $Script:Mode = $MODE_BACKUP
         }
@@ -1371,8 +1372,7 @@ function InitGlobals {
             throw (New-Object System.Exception( `
                 "Cannot validate Plex Media Server executable path.", `
                     $_.Exception))
-        }
-        else {
+        } else {
             Write-Verbose (FormatError $_)
             Write-Verbose "Will continue because the '-Inactive' switch is turned on."
         }
@@ -1550,8 +1550,7 @@ function GetBackupDirAndPath {
 
         $name = (Split-Path -Path $Script:BackupDir -Leaf)
         $path = $Script:BackupDir
-    }
-    else {
+    } else {
         WakeUpDir $Script:BackupRootDir
 
         # For Restore and Continue, get the latest timestamped subfolder from the backup root.
@@ -1570,8 +1569,7 @@ function GetBackupDirAndPath {
 
         if ($path) {
             $name = (Split-Path -Path $path -Leaf)
-        }
-        else {
+        } else {
             # For the Backup mode, generate a new timestamp-based folder name.
             # Do the same for Continue mode if we did not find the last backup folder.
             $name = GetNewBackupDirName
@@ -1607,8 +1605,7 @@ function InitMail {
             if ($Script:SendMail -ne $SEND_MAIL_NEVER) {
                 Write-Verbose "Will not send email notification because the condition is not met."
                 $Script:SendMail = $SEND_MAIL_NEVER
-            }
-            else {
+            } else {
                 Write-Verbose "Email notification will not be sent."
             }
 
@@ -1686,8 +1683,7 @@ function InitMail {
         if (!$Script:From) {
             if ($Script:Credential -and $Script:Credential.UserName) {
                 $Script:From = $Script:Credential.UserName
-            }
-            else {
+            } else {
                 $Script:From = $Script:To
             }
         }
@@ -1778,8 +1774,7 @@ function ValidateVersion {
 
     if ($Script:Mode -eq $MODE_BACKUP) {
         Write-Verbose "Version validation skipped during backup."
-    }
-    else {
+    } else {
         if (!$Script:BackupVersion) {
             Write-Verbose `
                 "Version validation skipped because of the missing backup version."
@@ -1787,8 +1782,7 @@ function ValidateVersion {
         elseif (!$Script:PlexVersion) {
             Write-Verbose `
                 "Version validation skipped because of the missing Plex Media Server version."
-        }
-        else {
+        } else {
             Write-Verbose ("Validating the backup version '$BackupVersion' " +
                 "against the Plex Media Server version '$Script:PlexVersion'.")
 
@@ -1906,8 +1900,7 @@ function MustSendMail {
     if ($Script:SendMail -eq $SEND_MAIL_SUCCESS) {
         if ($success -ne $false) {
             return $true
-        }
-        else {
+        } else {
             return $false
         }
     }
@@ -1915,8 +1908,7 @@ function MustSendMail {
     if ($Script:SendMail -eq $SEND_MAIL_ERROR) {
         if ($success -ne $true) {
             return $true
-        }
-        else {
+        } else {
             return $false
         }
     }
@@ -1985,8 +1977,7 @@ function MustSendAttachment {
     if ($Script:SendLogFile -eq $SEND_LOGFILE_SUCCESS) {
         if ($success -ne $true) {
             return $false
-        }
-        else {
+        } else {
             return $true
         }
     }
@@ -1994,8 +1985,7 @@ function MustSendAttachment {
     if ($Script:SendLogFile -eq $SEND_LOGFILE_ERROR) {
         if ($success -ne $false) {
             return $false
-        }
-        else {
+        } else {
             return $true
         }
     }
@@ -2126,8 +2116,7 @@ function SavePlexVersion {
     }
     elseif (!$Script:VersionFilePath) {
         Write-LogWarning "Plex Media Server Version will not be saved because version file path is undefined."
-    }
-    else {
+    } else {
         if (!(Test-Path -Path $Script:VersionFilePath -PathType Leaf)) {
             Write-Verbose "Overwriting '$Script:VersionFilePath'."
 
@@ -2163,8 +2152,7 @@ function GetPlexServices {
 
     if ($services) {
         Write-Verbose "$($services.Count) Plex service(s) detected running."
-    }
-    else {
+    } else {
         Write-Verbose "No Plex services detected running."
 
     }
@@ -2324,8 +2312,7 @@ function StartPlexMediaServer {
         # Start Plex Media Server executable (if it is not running).
         if ($exeFileName) {
             Write-Verbose "Plex Media Server is already running."
-        }
-        else {
+        } else {
             Write-Verbose "Plex Media Server is not running."
 
             Write-LogInfo "Starting Plex Media Server:"
@@ -2337,8 +2324,12 @@ function StartPlexMediaServer {
                 # https://stackoverflow.com/questions/20218076/batch-file-drop-elevated-privileges-run-a-command-as-original-user
 
                 # Start-Process $plexServerExePath -LoadUserProfile
-                runas /trustlevel:0x20000 "$Script:PlexServerPath"
-            }
+                if (($null -eq $Script:Machine) -or ($Script:Machine -eq "")) {
+                    runas /trustlevel:0x20000 "$Script:PlexServerPath"
+                } else {
+                    runas /machine:$Script:Machine /trustlevel:0x20000 "$Script:PlexServerPath"
+                }
+             }
             catch {
                 Write-LogError "Failed to start Plex Media Server '$($service.DisplayName)'."
                 WriteLogException $_
@@ -2433,8 +2424,7 @@ function FormatEmail {
     if ($Script:ErrorResult) {
         $styleResultColor  = $styleErrorColor
         $resultText = 'ERROR'
-    }
-    else {
+    } else {
         $styleResultColor = $styleSuccessColor
         $resultText  = 'SUCCESS'
     }
@@ -2458,8 +2448,7 @@ function FormatEmail {
 
     if ($Script:Type) {
         $backupMode = $Script:Mode.ToUpper() + " -" + $Type.ToUpper()
-    }
-    else {
+    } else {
         $backupMode = $Script:Mode.ToUpper()
     }
 
@@ -2470,8 +2459,7 @@ function FormatEmail {
     if ($Script:Mode -eq $MODE_RESTORE) {
         $dataDirName = "Plex app data"
         $dataDirPath = $Script:PlexAppDataDir
-    }
-    else {
+    } else {
         $dataDirName = "backup"
         $dataDirPath = $Script:BackupDir
     }
@@ -2479,8 +2467,7 @@ function FormatEmail {
     if ($Script:ErrorResult) {
         $styleErrorInfo      = $styleText
         $styleErrorParagraph = $styleParagraph
-    }
-    else {
+    } else {
         $styleDataInfo      = $styleText
         $styleVarData       = $styleVarText
         $styleDataParagraph = $styleParagraph
@@ -2533,8 +2520,7 @@ function SendMail {
     if (!$Script:From -or !$Script:To -or !$Script:SmtpServer) {
         Write-Verbose "Undefined SMTP settings (SmtpServer, To, From)."
         Write-Verbose "Email notification will not be sent."
-    }
-    else {
+    } else {
         $message = FormatEmail
 
         # WriteDebug $message
@@ -2543,8 +2529,7 @@ function SendMail {
 
         if ($Script:ErrorResult) {
             $subject = $SUBJECT_ERROR
-        }
-        else {
+        } else {
             $subject = $SUBJECT_SUCCESS
         }
 
@@ -2675,8 +2660,7 @@ function RobocopyFiles {
             if (!$Script:Test) {
                 if ($Script:Quiet -or (!$Script:RawOutput)) {
                     robocopy @cmdArgs *>&1 | Out-Null
-                }
-                else {
+                } else {
                     robocopy @cmdArgs
                 }
             }
@@ -2736,8 +2720,7 @@ function MoveFolder {
             if (!$Script:Test) {
                 if ($Script:Quiet -or (!$Script:RawOutput)) {
                     robocopy "$source" "$target" *.* /e /is /it *>&1 | Out-Null
-                }
-                else {
+                } else {
                     robocopy "$source" "$target" *.* /e /is /it
                 }
             }
@@ -2794,8 +2777,7 @@ function CopyFolder {
             if (!$Script:Test) {
                 if ($Script:Quiet -or (!$Script:RawOutput)) {
                     robocopy "$source" "$target" *.* /e /is /it /move *>&1 | Out-Null
-                }
-                else {
+                } else {
                     robocopy "$source" "$target" *.* /e /is /it /move
                 }
             }
@@ -2968,8 +2950,7 @@ function CompressFolder {
             if ($Script:TempDir) {
                 $tempZipFileName = $BACKUP_FILENAME + (New-Guid).Guid + $Script:ZipFileExt
                 $tempZipFilePath = Join-Path $Script:TempDir $tempZipFileName
-            }
-            else {
+            } else {
                 # Use temp names for the final files.
                 $tempZipFileName = $zipFileName
                 $tempZipFilePath = $zipFilePath
@@ -3008,8 +2989,7 @@ function CompressFolder {
                 if (!$Script:Test) {
                     if ($Script:Quiet -or (!$Script:RawOutput)) {
                         & $Script:ArchiverPath @cmdArgs *>&1 | Out-Null
-                    }
-                    else {
+                    } else {
                         & $Script:ArchiverPath @cmdArgs
                     }
                 }
@@ -3017,8 +2997,7 @@ function CompressFolder {
                 if ($LASTEXITCODE -gt 0) {
                     throw (Get7ZipError $LASTEXITCODE)
                 }
-            }
-            else {
+            } else {
                 if (!$Script:Test) {
                     Compress-Archive -Path (Join-Path $sourceDir.FullName "*") `
                         -DestinationPath $tempZipFilePath -Force
@@ -3036,8 +3015,7 @@ function CompressFolder {
                 # If the folder was empty, the ZIP file will not be created.
                 if ((!$Script:Test) -and (!(Test-Path $tempZipFilePath -PathType Leaf))) {
                     Write-LogWarning "Temp archive file was not created."
-                }
-                else {
+                } else {
                     # Copy temp ZIP file from the backup folder.
                     Write-LogInfo "Copying:"
                     Write-LogInfo $tempZipFilePath -Indent 1
@@ -3176,8 +3154,7 @@ function CompressFiles {
                         if (!$Script:Test) {
                             if ($Script:Quiet -or (!$Script:RawOutput)) {
                                 & $Script:ArchiverPath @cmdArgs (Get-ChildItem (Join-Path $Script:PlexAppDataDir "*") -File) *>&1 | Out-Null
-                            }
-                            else {
+                            } else {
                                 & $Script:ArchiverPath @cmdArgs (Get-ChildItem (Join-Path $Script:PlexAppDataDir "*") -File)
                             }
                         }
@@ -3185,8 +3162,7 @@ function CompressFiles {
                         if ($LASTEXITCODE -gt 0) {
                             throw (Get7ZipError $LASTEXITCODE)
                         }
-                    }
-                    else {
+                    } else {
                         # Use the default compression.
                         if (!$Script:Test) {
                             Get-ChildItem -Path $Script:PlexAppDataDir -File | `
@@ -3206,8 +3182,7 @@ function CompressFiles {
 
                     Write-LogInfo "Compressed file size:"
                     Write-LogInfo (FormatFileSize $zipFilePath) -Indent 1
-                }
-                else {
+                } else {
                     Write-LogInfo "No files found in '$Script:PlexAppDataDir' (it's okay)."
                 }
             }
@@ -3470,8 +3445,7 @@ function Backup {
                     $Script:ExcludeFiles `
                     $Script:Retries `
                     $Script:RetryWaitSec
-        }
-        else {
+        } else {
             try
             {
                 # Temporarily move special subfolders to backup folder.
@@ -3605,8 +3579,7 @@ function DecompressFolder {
 
             Write-LogInfo "Completed at:"
             Write-LogInfo (GetTimestamp) -Indent 1
-        }
-        else {
+        } else {
             $tempZipFilePath = $zipFilePath
         }
 
@@ -3633,8 +3606,7 @@ function DecompressFolder {
             if (!$Script:Test) {
                 if ($Script:Quiet -or (!$Script:RawOutput)) {
                     & $Script:ArchiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" "-aoa" "-y" @cmdArgs *>&1 | Out-Null
-                }
-                else {
+                } else {
                     & $Script:ArchiverPath "x" "$tempZipFilePath" "-o$plexAppDataDirPath" "-aoa" "-y" @cmdArgs
                 }
             }
@@ -3642,8 +3614,7 @@ function DecompressFolder {
             if ($LASTEXITCODE -gt 0) {
                 throw (Get7ZipError $LASTEXITCODE)
             }
-        }
-        else {
+        } else {
             if (!$Script:Test) {
                 Expand-Archive -Path $tempZipFilePath `
                     -DestinationPath $plexAppDataDirPath -Force
@@ -3714,8 +3685,7 @@ function DecompressFiles {
                     if (!$Script:Test) {
                         if ($Script:Quiet -or (!$Script:RawOutput)) {
                             & $Script:ArchiverPath "x" "$zipFilePath" "-o$Script:PlexAppDataDir" "-y" @cmdArgs *>&1 | Out-Null
-                        }
-                        else {
+                        } else {
                             & $Script:ArchiverPath "x" "$zipFilePath" "-o$Script:PlexAppDataDir" "-y" @cmdArgs
                         }
                     }
@@ -3723,8 +3693,7 @@ function DecompressFiles {
                     if ($LASTEXITCODE -gt 0) {
                         throw (Get7ZipError $LASTEXITCODE)
                     }
-                }
-                else {
+                } else {
                     if (!$Script:Test) {
                         Expand-Archive -Path $zipFilePath -DestinationPath $Script:PlexAppDataDir -Force
                     }
@@ -3776,8 +3745,7 @@ function Restore {
                 $null `
                 $Script:Retries `
                 $Script:RetryWaitSec
-        }
-        else {
+        } else {
             # Compress and archive Plex app data.
             try {
                 DecompressFiles
@@ -3911,8 +3879,7 @@ function ProcessBackup {
 
             if ($Script:Mode -eq $MODE_RESTORE) {
                 Restore
-            }
-            else {
+            } else {
                 Backup
             }
 
@@ -3923,8 +3890,7 @@ function ProcessBackup {
 
                 if ($Script:Mode -eq $MODE_RESTORE) {
                     $dir = $Script:PlexAppDataDir
-                }
-                else {
+                } else {
                     $dir = $Script:BackupDir
                 }
 
@@ -3973,8 +3939,7 @@ function ProcessBackup {
 
             if ($Script:Mode -eq $MODE_RESTORE) {
                 Write-LogInfo "Restore operation completed."
-            }
-            else {
+            } else {
                 Write-LogInfo "Backup operation completed."
             }
 
@@ -4042,8 +4007,7 @@ try {
     try {
         if ($configFile) {
             $configFileName = "configuration file '$configFile'"
-        }
-        else {
+        } else {
             $configFileName = "default configuration file (if any)"
         }
 
@@ -4126,8 +4090,7 @@ catch {
     if (Test-LoggingStarted) {
         # Print error to logs.
         Write-LogError $_
-    }
-    else {
+    } else {
         # Print error to screen.
         WriteException $_
     }
@@ -4136,8 +4099,7 @@ finally {
     # Close mutex enforcing single-instance operation.
     if (Get-Module -Name $MODULE_SingleInstance) {
         Exit-SingleInstance
-    }
-    else {
+    } else {
         Write-Verbose "$MODULE_SingleInstance module is not loaded."
     }
 
@@ -4169,8 +4131,7 @@ finally {
                 if (!$Script:Test) {
                     Restart-Computer -Force
                 }
-            }
-            else {
+            } else {
                 if (!$Script:Test) {
                     Restart-Computer
                 }
