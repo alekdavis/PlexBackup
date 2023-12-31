@@ -442,6 +442,7 @@ By default, PlexBackup will use the username provided via the SMTP credentials a
     [-Logoff] `
     [-Reboot] `
     [-ForceReboot] `
+    [-Machine <String>] `
     [<CommonParameters>]
 
 ```
@@ -664,6 +665,15 @@ Reboots the computer after a successful backup operation (ignored on restore).
 `ForceReboot`
 
 Forces an immediate restart of the computer after a successfull backup operation (ignored on restore).
+
+`Machine`
+
+Provided for rare cases when the backup script fails to re-launch Plex Media Server due to error `87: The parameter is incorrect`. If you run into this problem (which is most likely due to a bad OS patch), set the machine flag to one of the following:
+
+- `x86`
+- `amd64`
+
+Keep in mind that the machine flag should match the architecture of the Plex Media Server executable (not the operating system), so for a 32-bit process, use the `x86` flag, and for the 64-bit use the `amd64` flag. If you are not sure which pone to use, try one and if it does not work, try the other.
 
 
 `<CommonParameters>`
