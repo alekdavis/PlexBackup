@@ -76,7 +76,7 @@ PlexBackup uses the following modules:
 To verify that the modules get installed, run the script manually. You may be [prompted](https://docs.microsoft.com/en-us/powershell/gallery/how-to/getting-support/bootstrapping-nuget) to update the [NuGet](https://www.nuget.org/downloads) version (or you can do it yourself in advance).
 
 ### Runtime parameters
-The default value of the PlexBackup script's runtime parameters are defined in code, but you can override some of them via command-line arguments or config file settings.
+The default values of the PlexBackup script's runtime parameters are defined in code, but you can override some of them via command-line arguments or config file settings.
 
 ### Config file
 Config file is optional. The default config file must be named after the PlexBackup script with the `.json` extension, such as `PlexBackup.ps1.json`. If the file with this name does not exist in the backup script's folder, PlexBackup will not care. You can also specify a custom config file name (or more accurately, path) via the `ConfigFile` command-line argument ([see sample](PlexBackup.ps1.SAMPLE.json)).
