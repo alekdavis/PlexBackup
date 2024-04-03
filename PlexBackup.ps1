@@ -244,9 +244,9 @@ Intends to overcome an infrequent error "87: The parameter is incorrect" returne
 Keep in mind that these refer to the architecture of the Plex Media Server executable, not to the computer on which it runs, so for the 32-bit version of the server, use 'x86' and for the 64-bit version, use 'amd64'. Do not use this flag if you do not get error 87.
 
 .NOTES
-Version    : 2.1.7
+Version    : 2.1.8
 Author     : Alek Davis
-Created on : 2023-12-25
+Created on : 2024-04-02
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
 Copyright  : (c) Alek Davis
@@ -1235,8 +1235,11 @@ function Prologue {
         Write-LogInfo (GetScriptVersion)
     }
 
-    Write-LogInfo "Script started at:"
+    Write-LogInfo "Running as:"
     Write-LogInfo $Script:StartTime -Indent 1
+
+    Write-LogInfo "Script started at:"
+    Write-LogInfo $env:UserName -Indent 1
 
     # Get script
     $scriptArgs = GetCommandLineArgs
