@@ -2,7 +2,7 @@
 
 <#
 .SYNOPSIS
-Backs up or restores Plex application data files and registry keys on a Windows system.
+Backs up and restores Plex application data files and registry keys on a Windows system.
 
 .DESCRIPTION
 The script can run in these modes:
