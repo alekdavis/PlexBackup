@@ -244,12 +244,12 @@ Intends to overcome an infrequent error "87: The parameter is incorrect" returne
 Keep in mind that these refer to the architecture of the Plex Media Server executable, not to the computer on which it runs, so for the 32-bit version of the server, use 'x86' and for the 64-bit version, use 'amd64'. Do not use this flag if you do not get error 87.
 
 .NOTES
-Version    : 2.1.10
+Version    : 2.1.11
 Author     : Alek Davis
-Created on : 2025-04-28
+Created on : 2026-08-13
 License    : MIT License
 LicenseLink: https://github.com/alekdavis/PlexBackup/blob/master/LICENSE
-Copyright  : (c) 2025 Alek Davis
+Copyright  : (c) 2026 Alek Davis
 
 .LINK
 https://github.com/alekdavis/PlexBackup
@@ -2970,7 +2970,7 @@ function CompressFolder {
                 [Array]$cmdArgs = "a", "$tempZipFilePath", (Join-Path $sourceDir.FullName "*"), "-r", "-y"
 
                 if ($Script:ExcludeFiles -and $Script:ExcludeFiles.Count -gt 0) {
-                    Write-Verbose "Excluding file types: $excludeFiles"
+                    Write-Verbose "Excluding file types: $Script:ExcludeFiles"
 
                     foreach ($excludeFile in $Script:ExcludeFiles) {
                         if ($excludeFile) {

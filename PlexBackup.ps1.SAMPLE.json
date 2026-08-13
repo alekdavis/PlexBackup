@@ -177,7 +177,7 @@
     },
     "ExcludeFiles": {
         "_meta": {
-            "default": ["*.bif"]
+            "default": ["*.bif", "Transcode"]
         },
         "value": null
     },
